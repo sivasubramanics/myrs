@@ -7,25 +7,33 @@ mod utils;
 
 use clap::Parser;
 use crate::logger::init_logger;
+use crate::utils::helpers::format_time;
 use log::info;
 use std::time::Instant;
+use std::process;
 
-/// Formats a Duration into HH:MM:SS.mmm string format
-fn format_duration(duration: std::time::Duration) -> String {
-    let total_millis = duration.as_millis();
-    let millis = total_millis % 1000;
-    let total_secs = total_millis / 1000;
-    let seconds = total_secs % 60;
-    let minutes = (total_secs / 60) % 60;
-    let hours = total_secs / 3600;
 
-    format!("{:02}:{:02}:{:02}.{:03}", hours, minutes, seconds, millis)
-}
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() {
     let start_time = Instant::now();
 
+    // Initialize your custom logger format
     init_logger();
+
+    // Run the application logic and catch any returned errors
+    if let Err(_err) = run_app() {
+        // Since subcommands use error!() before returning an Err,
+        // the error message has already been printed via init_logger().
+        // Simply exit with a non-zero code.
+        process::exit(1);
+    }
+
+    let elapsed = start_time.elapsed();
+    info!("Total execution time: {}", format_time(elapsed));
+}
+
+/// Helper function to dispatch CLI commands and propagate errors with `?`
+fn run_app() -> Result<(), Box<dyn std::error::Error>> {
     let cli = cli::Cli::parse();
 
     match cli.command {
@@ -45,10 +53,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         } => {
             commands::fafilter::run(&fname, min_len, max_len, min_gc)?;
         }
-    }
 
-    let elapsed = start_time.elapsed();
-    info!("Total execution time: {}", format_duration(elapsed));
+        cli::Commands::FaFai { fname } => {
+            commands::fafai::run(&fname)?;
+        }
+    }
 
     Ok(())
 }

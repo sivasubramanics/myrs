@@ -1,12 +1,13 @@
 use std::fs::File;
 use std::io::{BufWriter, Write};
-
+use log::info;
 use crate::data::fasta::{FastaReader, FastaRecord};
+use crate::utils::helpers::create_file;
 
 pub fn run(fname: &str) -> Result<(), Box<dyn std::error::Error>> {
     let mut reader = FastaReader::from_path(fname)?;
 
-    let outfile = File::create(format!("{fname}.len"))?;
+    let outfile = create_file(fname)?;
     let mut writer = BufWriter::new(outfile);
 
     // Reuse a single record object across every iteration
@@ -18,6 +19,7 @@ pub fn run(fname: &str) -> Result<(), Box<dyn std::error::Error>> {
 
     // Flush the writer to ensure all data is saved
     writer.flush()?;
+    info!("Length information written to '{}.len'", fname);
 
     Ok(())
 }

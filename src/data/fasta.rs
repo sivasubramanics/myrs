@@ -1,6 +1,6 @@
 use crate::error::{AppError, Result};
-use crate::utils::helpers::{has_valid_extension, trim_ascii_whitespace};
-use crate::utils::{DEFAULT_BUF_SIZE, VALID_FASTA_EXTENSIONS};
+use crate::utils::helpers::{create_file, has_valid_extension, open_file, trim_ascii_whitespace};
+use crate::utils::defaults::{DEFAULT_BUF_SIZE, VALID_FASTA_EXTENSIONS, COMPLEMENT};
 use flate2::bufread::MultiGzDecoder;
 use log::{debug, info, trace}; // Added logging imports
 use std::fs::File;
@@ -67,6 +67,31 @@ impl FastaRecord {
         let counts = self.num_atgc();
         counts[4] // N count
     }
+
+    #[inline]
+    pub fn revcomp(&self) -> Vec<u8> {
+        let mut rev = Vec::with_capacity(self.sequence.len());
+        for &byte in self.sequence.iter().rev() {
+            // Unsafe lookup bypasses unnecessary bounds checks
+            rev.push(unsafe { *COMPLEMENT.get_unchecked(byte as usize) });
+        }
+        rev
+    }
+
+    /// In-place reverse complement (Zero allocations!)
+    pub fn revcomp_mut(&mut self) {
+        let len = self.sequence.len();
+        for i in 0..len / 2 {
+            let j = len - 1 - i;
+            let a = COMPLEMENT[self.sequence[i] as usize];
+            let b = COMPLEMENT[self.sequence[j] as usize];
+            self.sequence[i] = b;
+            self.sequence[j] = a;
+        }
+        if len % 2 != 0 {
+            self.sequence[len / 2] = COMPLEMENT[self.sequence[len / 2] as usize];
+        }
+    }
 }
 
 pub struct FastaReader<R> {
@@ -96,10 +121,7 @@ impl FastaReader<Box<dyn BufRead>> {
             });
         }
 
-        let file = File::open(path_ref).map_err(|e| AppError::FileIo {
-            path: path_ref.to_path_buf(),
-            source: e,
-        })?;
+        let file = open_file(path_ref)?;
 
         let is_gzipped = path_ref
             .extension()
@@ -225,10 +247,7 @@ pub struct FastaWriter<W: Write> {
 impl FastaWriter<BufWriter<File>> {
     pub fn create_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let path_ref = path.as_ref();
-        let file = File::create(path_ref).map_err(|e| AppError::FileIo {
-            path: path_ref.to_path_buf(),
-            source: e,
-        })?;
+        let file = create_file(path_ref)?;
 
         info!("Created output FASTA file {:?}", path_ref.display());
 

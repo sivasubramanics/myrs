@@ -25,4 +25,10 @@ pub enum AppError {
 
     #[error("Gzip decoding failed: {0}")]
     GzipDecode(String),
+
+    #[error("Input file is compressed. Please decompress before indexing.")]
+    CompressedFileNotSupported,
+
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
 }

@@ -1,5 +1,7 @@
+use std::fs::File;
 use std::path::Path;
 use crate::data::fasta::FastaRecord;
+use crate::error::{AppError, Result};
 
 /// Trims leading and trailing ASCII whitespace from a byte slice in-place without allocation.
 #[inline]
@@ -120,4 +122,44 @@ pub fn num_to_str(mut n: u64) -> String {
     }
 
     result.chars().rev().collect()
+}
+
+/// function to create a file
+pub fn create_file<P: AsRef<Path>>(path: P) -> Result<File> {
+    let p = path.as_ref();
+    File::create(p).map_err(|e| AppError::FileIo {
+        path: p.to_path_buf(),
+        source: e,
+    })
+}
+
+/// function to open a file
+pub fn open_file<P: AsRef<Path>>(path: P) -> Result<File> {
+    let p = path.as_ref();
+    File::open(p).map_err(|e| AppError::FileIo {
+        path: p.to_path_buf(),
+        source: e,
+    })
+}
+
+/// is compressed
+/// Helper to determine if a path represents a compressed file based on its extension.
+pub fn is_compressed<P: AsRef<Path>>(path: P) -> bool {
+    path.as_ref()
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map(|ext| matches!(ext.to_lowercase().as_str(), "gz" | "bgz" | "bz2" | "xz" | "zst"))
+        .unwrap_or(false)
+}
+
+/// Formats a Duration into HH:MM:SS.mmm string format
+pub fn format_time(duration: std::time::Duration) -> String {
+    let total_millis = duration.as_millis();
+    let millis = total_millis % 1000;
+    let total_secs = total_millis / 1000;
+    let seconds = total_secs % 60;
+    let minutes = (total_secs / 60) % 60;
+    let hours = total_secs / 3600;
+
+    format!("{:02}:{:02}:{:02}.{:03}", hours, minutes, seconds, millis)
 }

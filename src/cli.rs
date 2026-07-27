@@ -33,4 +33,9 @@ pub enum Commands {
         #[arg(short = 'g', long)]
         min_gc: Option<f64>,
     },
+
+    FaFai {
+        #[arg(short, long)]
+        fname: String,
+    }
 }

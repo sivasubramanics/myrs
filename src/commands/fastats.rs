@@ -1,7 +1,7 @@
 use crate::data::fasta::FastaReader;
 use crate::error::{AppError, Result};
 use crate::utils::defaults::DEFAULT_COLUMN_WIDTH;
-use crate::utils::helpers::{num_to_str, nx};
+use crate::utils::helpers::{create_file, num_to_str, nx};
 use log::{debug, info, warn};
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -104,10 +104,7 @@ pub fn run(fname: &str) -> Result<()> {
 
     // --- 2. Write TSV Output File (`input.fasta.summary.tsv`) ---
     let tsv_path = format!("{}.summary.tsv", fname);
-    let file = File::create(Path::new(&tsv_path)).map_err(|e| AppError::FileIo {
-        path: Path::new(&tsv_path).to_path_buf(),
-        source: e,
-    })?;
+    let file = create_file(&tsv_path)?;
 
     let mut writer = BufWriter::new(file);
 

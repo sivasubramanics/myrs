@@ -1,4 +1,3 @@
-use std::fs::File;
 use std::io::{BufWriter, Write};
 use log::info;
 use crate::data::fasta::{FastaReader, FastaRecord};
@@ -19,7 +18,7 @@ pub fn run(fname: &str) -> Result<(), Box<dyn std::error::Error>> {
 
     // Flush the writer to ensure all data is saved
     writer.flush()?;
-    info!("Length information written to '{}.len'", fname);
+    info!("length information written to '{}.len'", fname);
 
     Ok(())
 }

@@ -1,5 +1,5 @@
 mod cli;
-mod commands;
+mod cmd;
 mod data;
 mod error;
 mod logger;
@@ -17,19 +17,26 @@ use std::process;
 fn main() {
     let start_time = Instant::now();
 
-    // Initialize your custom logger format
+    // initialize logger
     init_logger();
 
-    // Run the application logic and catch any returned errors
+    // print env version and contact
+    let pkg_name = env!("CARGO_PKG_NAME");
+    let pkg_version = env!("CARGO_PKG_VERSION");
+    let pkg_authors = env!("CARGO_PKG_AUTHORS");
+
+    info!("{} version v{} ({})", pkg_name, pkg_version, pkg_authors);
+
+    // run the application
     if let Err(_err) = run_app() {
-        // Since subcommands use error!() before returning an Err,
+        // since subcommands use error!() before returning an Err,
         // the error message has already been printed via init_logger().
-        // Simply exit with a non-zero code.
+        // simply exiting with a non-zero code.
         process::exit(1);
     }
 
     let elapsed = start_time.elapsed();
-    info!("Total execution time: {}", format_time(elapsed));
+    info!("total execution time: {}", format_time(elapsed));
 }
 
 /// Helper function to dispatch CLI commands and propagate errors with `?`
@@ -38,11 +45,11 @@ fn run_app() -> Result<(), Box<dyn std::error::Error>> {
 
     match cli.command {
         cli::Commands::FaLength { fname } => {
-            commands::falength::run(&fname)?;
+            cmd::falength::run(&fname)?;
         }
 
         cli::Commands::FaStats { fname } => {
-            commands::fastats::run(&fname)?;
+            cmd::fastats::run(&fname)?;
         }
 
         cli::Commands::FaFilter {
@@ -51,11 +58,11 @@ fn run_app() -> Result<(), Box<dyn std::error::Error>> {
             max_len,
             min_gc,
         } => {
-            commands::fafilter::run(&fname, min_len, max_len, min_gc)?;
+            cmd::fafilter::run(&fname, min_len, max_len, min_gc)?;
         }
 
         cli::Commands::FaFai { fname } => {
-            commands::fafai::run(&fname)?;
+            cmd::fafai::run(&fname)?;
         }
     }
 

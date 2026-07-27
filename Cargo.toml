@@ -1,6 +1,7 @@
 [package]
 name = "myrs"
-version = "0.1.0"
+version = "0.0.1"
+authors = ["siva <c.s.sivasubramani@gmail.com>"]
 edition = "2024"
 
 [dependencies]
@@ -10,3 +11,4 @@ thiserror = "2.0.19"
 env_logger = "0.11.11"
 chrono = "0.4.45"
 log = "0.4.33"
+colored = "3.1.1"

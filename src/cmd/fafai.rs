@@ -10,8 +10,8 @@ pub fn run(fname: &str) -> Result<()> {
     // if the input file compressed, throw error saying we can't index compressed files
 
     if is_compressed(fname) {
-        error!("Input file '{}' is compressed. Please provide an uncompressed FASTA file for indexing.", fname);
-        return Err(AppError::InvalidInput("Compressed file not supported".into()));
+        error!("input file '{}' is compressed. Please provide an uncompressed FASTA file for indexing.", fname);
+        return Err(AppError::InvalidInput("compressed file not supported".into()));
     }
 
     let file = open_file(fname)?;
@@ -53,6 +53,7 @@ pub fn run(fname: &str) -> Result<()> {
             break;
         }
 
+        // Process each line of the input file
         if line_buf.starts_with(b">") {
             // If we encounter a new header, write the prior record's index entry
             if let Some(name) = seq_name.take() {

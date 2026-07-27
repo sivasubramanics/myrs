@@ -130,7 +130,7 @@ impl FastaReader<Box<dyn BufRead>> {
             .unwrap_or(false);
 
         info!(
-            "Reading fasta file {:?} (gzipped: {})",
+            "reading fasta file {:?} (gzipped: {})",
             path_ref.display(),
             is_gzipped
         );
@@ -165,7 +165,7 @@ impl<R: BufRead> FastaReader<R> {
                 self.line_buf.clear();
                 let bytes_read = self.reader.read_until(b'\n', &mut self.line_buf)?;
                 if bytes_read == 0 {
-                    debug!("Reached end of input stream after {} records.", self.current_id);
+                    debug!("reached end of input stream after {} records.", self.current_id);
                     return Ok(false);
                 }
 
@@ -216,7 +216,7 @@ impl<R: BufRead> FastaReader<R> {
         }
 
         trace!(
-            "Parsed record ID {}: name='{}', len={} bp",
+            "parsed record ID {}: name='{}', len={} bp",
             record.id,
             record.name,
             record.len()
@@ -249,7 +249,7 @@ impl FastaWriter<BufWriter<File>> {
         let path_ref = path.as_ref();
         let file = create_file(path_ref)?;
 
-        info!("Created output FASTA file {:?}", path_ref.display());
+        info!("created output FASTA file {:?}", path_ref.display());
 
         let writer = BufWriter::with_capacity(DEFAULT_BUF_SIZE, file);
         Ok(Self::new(writer))
@@ -272,7 +272,7 @@ impl<W: Write> FastaWriter<W> {
         sequence: &[u8],
         fold: Option<usize>,
     ) -> io::Result<()> {
-        trace!("Writing record '{}", name);
+        trace!("writing record '{}", name);
 
         self.writer.write_all(b">")?;
         self.writer.write_all(name.as_bytes())?;
@@ -302,7 +302,7 @@ impl<W: Write> FastaWriter<W> {
     }
 
     pub fn flush(&mut self) -> io::Result<()> {
-        debug!("Flushing output writer stream buffer");
+        debug!("flushing output writer stream buffer");
         self.writer.flush()
     }
 }

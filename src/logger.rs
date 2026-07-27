@@ -1,4 +1,5 @@
 use env_logger::{Builder, Env};
+use colored::Colorize;
 use std::io::Write;
 
 pub fn init_logger() {
@@ -6,25 +7,23 @@ pub fn init_logger() {
 
     Builder::from_env(env)
         .format(|buf, record| {
-            // Timestamp: 24 chars (e.g. [26-07-2026 16:04:59.875])
-            let now = chrono::Local::now().format("%d-%m-%Y %H:%M:%S%.3f");
+            let now = chrono::Local::now()
+                .format("%Y-%m-%d %H:%M:%S%.3f")
+                .to_string()
+                .bright_black();
 
-            // Format level string
+            let (r, g, b) = (106, 171, 115); // Dark Green
+            let target = record.target().truecolor(r, g, b);
+
             let level = match record.level() {
-                log::Level::Warn => "WARNING",
-                log::Level::Error => "ERROR",
-                log::Level::Info => "INFO",
-                log::Level::Debug => "DEBUG",
-                log::Level::Trace => "TRACE",
+                log::Level::Error => "ERROR  ".truecolor(243, 139, 168),
+                log::Level::Warn  => "WARNING".truecolor(255, 165, 0),
+                log::Level::Info  => "INFO   ".truecolor(166, 227, 161),
+                log::Level::Debug => "DEBUG  ".truecolor(52, 152, 219),
+                log::Level::Trace => "TRACE  ".truecolor(155, 89, 182),
             };
 
-            // Module/target name (e.g., 'filter', 'fasta', 'summary')
-            let target = record.target().split("::").last().unwrap_or(record.target());
-
-            // Alignment specifiers:
-            // {:<7}  -> Left-align level within 7 chars ("WARNING" is 7 chars)
-            // {:<10} -> Left-align module target within 10 chars (adjust width as needed)
-            writeln!(buf, "[{}] - {:<7} - {:<10} - {}", now, level, target, record.args())
+            writeln!(buf, "[{}] - {} - {:<18} - {}", now, level, target, record.args())
         })
         .init();
 }

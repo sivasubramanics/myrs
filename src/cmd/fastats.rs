@@ -3,12 +3,10 @@ use crate::error::{AppError, Result};
 use crate::utils::defaults::DEFAULT_COLUMN_WIDTH;
 use crate::utils::helpers::{create_file, num_to_str, nx};
 use log::{debug, info, warn};
-use std::fs::File;
 use std::io::{BufWriter, Write};
-use std::path::Path;
 
 pub fn run(fname: &str) -> Result<()> {
-    info!("Starting summary analysis on file: {}", fname);
+    info!("starting summary on file: {}", fname);
 
     let reader = FastaReader::from_path(fname)?;
 
@@ -39,25 +37,22 @@ pub fn run(fname: &str) -> Result<()> {
 
         lengths.push(len);
 
-        match len {
-            l if l >= 1_000_000 => ge1m += 1,
-            l if l >= 10_000 => ge10k += 1,
-            l if l >= 2_000 => ge2k += 1,
-            l if l >= 1_000 => ge1k += 1,
-            l if l >= 500 => ge500 += 1,
-            l if l >= 200 => ge200 += 1,
-            l if l >= 100 => ge100 += 1,
-            _ => {}
-        }
+        if len >= 1_000_000 { ge1m += 1; }
+        if len >= 10_000    { ge10k += 1; }
+        if len >= 2_000     { ge2k += 1; }
+        if len >= 1_000     { ge1k += 1; }
+        if len >= 500       { ge500 += 1; }
+        if len >= 200       { ge200 += 1; }
+        if len >= 100       { ge100 += 1; }
 
         non_atgc += record.num_n();
     }
 
     if total_count == 0 {
-        warn!("Input file '{}' contained 0 records.", fname);
+        warn!("input file '{}' contained 0 records.", fname);
         min_length = 0;
     } else {
-        debug!("Parsed {} records. Sorting contig lengths...", total_count);
+        debug!("parsed {} records. Sorting sequence lengths...", total_count);
     }
 
     lengths.sort_unstable_by(|a, b| b.cmp(a));
@@ -77,8 +72,6 @@ pub fn run(fname: &str) -> Result<()> {
         0.0
     };
 
-    // --- 1. Formatted Summary Block via Logger ---
-    // --- 1. Bioinformatics-Standard Summary Block ---
     info!("====================== SUMMARY ======================");
     info!("{:<width$} : {}", "Input file", fname, width = DEFAULT_COLUMN_WIDTH);
     info!("{:<width$} : {}", "Total sequences", num_to_str(total_count as u64), width = DEFAULT_COLUMN_WIDTH);
@@ -102,7 +95,6 @@ pub fn run(fname: &str) -> Result<()> {
     info!("{:<width$} : {}", "Count >= 1 Mb", num_to_str(ge1m as u64), width = DEFAULT_COLUMN_WIDTH);
     info!("=================================================");
 
-    // --- 2. Write TSV Output File (`input.fasta.summary.tsv`) ---
     let tsv_path = format!("{}.summary.tsv", fname);
     let file = create_file(&tsv_path)?;
 
@@ -128,7 +120,7 @@ pub fn run(fname: &str) -> Result<()> {
 
     writer.flush()?;
 
-    info!("Saved summary metrics to TSV report: {}", tsv_path);
+    info!("saved summary metrics to TSV report: {}", tsv_path);
 
     Ok(())
 }

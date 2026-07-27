@@ -1,7 +1,7 @@
 use crate::data::fasta::{FastaReader, FastaRecord, FastaWriter};
 use crate::error::Result;
 use crate::utils::DEFAULT_FOLD_WIDTH;
-use log::{debug, info, warn}; // Import standard logging macros
+use log::{debug, info, warn};
 use std::path::Path;
 
 fn generate_output_filename<P: AsRef<Path>>(input_path: P) -> String {
@@ -59,9 +59,9 @@ pub fn run(
 ) -> Result<()> {
     let out_fname = generate_output_filename(fname);
 
-    info!("Starting filter operation on input file: {}", fname);
+    info!("filtering on input file: {}", fname);
     debug!(
-        "Filter criteria applied - min_len: {:?}, max_len: {:?}, min_gc: {:?}",
+        "filter criteria applied - min_len: {:?}, max_len: {:?}, min_gc: {:?}",
         min_len, max_len, min_gc
     );
 
@@ -86,10 +86,10 @@ pub fn run(
     let removed_records = total_records - passed_records;
 
     if total_records == 0 {
-        warn!("Input file {} contains zero records.", fname);
+        warn!("input file {} contains zero records.", fname);
     } else {
         info!(
-            "Removed {} sequence(s) from file. Kept {}/{} records written to {}",
+            "removed {} sequence(s) from file. Kept {}/{} records written to {}",
             removed_records, passed_records, total_records, out_fname
         );
     }

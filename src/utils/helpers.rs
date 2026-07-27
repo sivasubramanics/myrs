@@ -46,7 +46,7 @@ pub fn append_suffix_to_path<P: AsRef<Path>>(input_path: P, suffix: &str) -> Str
 ///
 /// Accepts a path and a list of valid extensions (e.g. `["fasta", "fa", "fna"]`).
 /// Handles lowercase/uppercase matching and compressed variants like `.fasta.gz`.
-pub fn has_valid_extension<P: AsRef<Path>>(path: P, valid_extensions: &[&str]) -> bool {
+pub fn has_valid_extension<P: AsRef<Path>>(path: P, valid_extensions: &[&str], allow_compressed: bool) -> bool {
     let path = path.as_ref();
 
     // Get the outer extension (e.g., "gz" or "fasta")
@@ -55,7 +55,7 @@ pub fn has_valid_extension<P: AsRef<Path>>(path: P, valid_extensions: &[&str]) -
         None => return false,
     };
 
-    if ext == "gz" {
+    if ext == "gz" && allow_compressed {
         // Strip .gz and inspect the underlying file extension
         let stem = match path.file_stem() {
             Some(s) => Path::new(s),

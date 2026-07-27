@@ -2,6 +2,8 @@ use crate::error::{AppError, Result};
 use crate::utils::helpers::{create_file, has_valid_extension, open_file, trim_ascii_whitespace};
 use crate::utils::defaults::{DEFAULT_BUF_SIZE, VALID_FASTA_EXTENSIONS, COMPLEMENT};
 use flate2::bufread::MultiGzDecoder;
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use log::{debug, info, trace}; // Added logging imports
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Read, Write, BufWriter};
@@ -108,7 +110,7 @@ impl FastaReader<Box<dyn BufRead>> {
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let path_ref = path.as_ref();
 
-        if !has_valid_extension(path_ref, VALID_FASTA_EXTENSIONS) {
+        if !has_valid_extension(path_ref, VALID_FASTA_EXTENSIONS, true) {
             let ext = path_ref
                 .extension()
                 .and_then(|e| e.to_str())
@@ -244,14 +246,45 @@ pub struct FastaWriter<W: Write> {
     writer: W,
 }
 
-impl FastaWriter<BufWriter<File>> {
+// impl FastaWriter<BufWriter<File>> {
+//     pub fn create_path<P: AsRef<Path>>(path: P) -> Result<Self> {
+//         let path_ref = path.as_ref();
+//         let file = create_file(path_ref)?;
+//
+//         info!("created output FASTA file {:?}", path_ref.display());
+//
+//         let writer = BufWriter::with_capacity(DEFAULT_BUF_SIZE, file);
+//         Ok(Self::new(writer))
+//     }
+// }
+
+impl FastaWriter<Box<dyn Write>> {
     pub fn create_path<P: AsRef<Path>>(path: P) -> Result<Self> {
         let path_ref = path.as_ref();
         let file = create_file(path_ref)?;
 
-        info!("created output FASTA file {:?}", path_ref.display());
+        let is_gzipped = path_ref
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| ext.eq_ignore_ascii_case("gz"))
+            .unwrap_or(false);
 
-        let writer = BufWriter::with_capacity(DEFAULT_BUF_SIZE, file);
+        info!(
+        "created output FASTA file {:?} (gzipped: {})",
+        path_ref.display(),
+        is_gzipped
+    );
+
+        let inner_buf = BufWriter::with_capacity(DEFAULT_BUF_SIZE, file);
+
+        let writer: Box<dyn Write> = if is_gzipped {
+            let gz_encoder = GzEncoder::new(inner_buf, Compression::fast());
+            // CRITICAL FIX: Put a BufWriter ABOVE GzEncoder to batch small writes!
+            Box::new(BufWriter::with_capacity(DEFAULT_BUF_SIZE, gz_encoder))
+        } else {
+            Box::new(inner_buf)
+        };
+
         Ok(Self::new(writer))
     }
 }

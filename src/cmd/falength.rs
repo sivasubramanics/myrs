@@ -6,7 +6,7 @@ use crate::utils::helpers::create_file;
 pub fn run(fname: &str) -> Result<(), Box<dyn std::error::Error>> {
     let mut reader = FastaReader::from_path(fname)?;
 
-    let outfile = create_file(fname)?;
+    let outfile = create_file(&format!("{}.len", fname))?;
     let mut writer = BufWriter::new(outfile);
 
     // Reuse a single record object across every iteration

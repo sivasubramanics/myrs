@@ -23,7 +23,7 @@ pub fn init_logger() {
                 log::Level::Trace => "TRACE  ".truecolor(155, 89, 182),
             };
 
-            writeln!(buf, "[{}] - {} - {:<18} - {}", now, level, target, record.args())
+            writeln!(buf, "[{}] - {} - {:<25} - {}", now, level, target, record.args())
         })
         .init();
 }

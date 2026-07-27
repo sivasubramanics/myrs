@@ -20,13 +20,6 @@ fn main() {
     // initialize logger
     init_logger();
 
-    // print env version and contact
-    let pkg_name = env!("CARGO_PKG_NAME");
-    let pkg_version = env!("CARGO_PKG_VERSION");
-    let pkg_authors = env!("CARGO_PKG_AUTHORS");
-
-    info!("{} version v{} ({})", pkg_name, pkg_version, pkg_authors);
-
     // run the application
     if let Err(_err) = run_app() {
         // since subcommands use error!() before returning an Err,
@@ -42,6 +35,13 @@ fn main() {
 /// Helper function to dispatch CLI commands and propagate errors with `?`
 fn run_app() -> Result<(), Box<dyn std::error::Error>> {
     let cli = cli::Cli::parse();
+
+    // print env version and contact
+    let pkg_name = env!("CARGO_PKG_NAME");
+    let pkg_version = env!("CARGO_PKG_VERSION");
+    let pkg_authors = env!("CARGO_PKG_AUTHORS");
+
+    info!("{} version v{} ({})", pkg_name, pkg_version, pkg_authors);
 
     match cli.command {
         cli::Commands::FaLength { fname } => {
@@ -63,6 +63,38 @@ fn run_app() -> Result<(), Box<dyn std::error::Error>> {
 
         cli::Commands::FaFai { fname } => {
             cmd::fafai::run(&fname)?;
+        }
+
+        cli::Commands::FaOneRecord {
+            fname,
+            name,
+            output,
+            fold_width,
+        } => {
+            cmd::faonerecord::run(&fname, &name, output, fold_width)?;
+        },
+
+        cli::Commands::FaSomeRecords {
+            fname,
+            names_file,
+            names_list,
+            output,
+            fold_width,
+        } => {
+            cmd::fasomerecords::run(
+                &fname,
+                names_file.as_deref(),
+                names_list,
+                output,
+                fold_width,
+            )?;
+        },
+
+        cli::Commands::FqStats {
+            fname,
+            threads
+        } => {
+            cmd::fqstats::run(&fname, threads)?;
         }
     }
 

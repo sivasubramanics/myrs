@@ -3,19 +3,19 @@ use log::{error, info, warn};
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
-use crate::utils::helpers::{create_file, open_file, is_compressed};
+use crate::data::fasta::FastaReader;
+use crate::utils::helpers::{create_file, open_file, is_compressed, has_valid_extension};
+use crate::utils::VALID_FASTA_EXTENSIONS;
 
 pub fn run(fname: &str) -> Result<()> {
-    info!("creating fai file '{}'", fname);
-    // if the input file compressed, throw error saying we can't index compressed files
+    info!("creating faidx file '{}'", fname);
 
-    if is_compressed(fname) {
-        error!("input file '{}' is compressed. Please provide an uncompressed FASTA file for indexing.", fname);
-        return Err(AppError::InvalidInput("compressed file not supported".into()));
+    if !has_valid_extension(fname, VALID_FASTA_EXTENSIONS, false) {
+        error!("input file '{}' does not have a valid FASTA extension. Supported extensions: .fasta, .fa, .fna, .faa, .ffn, .frn (not compressed)", fname);
+        return Err(AppError::InvalidInput("invalid file extension".into()));
     }
 
     let file = open_file(fname)?;
-
     let mut reader = BufReader::new(file);
 
     let out_path = format!("{}.faidx", fname);
@@ -41,9 +41,13 @@ pub fn run(fname: &str) -> Result<()> {
         })?;
 
         if bytes_read == 0 {
-            // End of file — flush the last active sequence
+            // End of file — flush the last sequence
             if let Some(name) = seq_name.take() {
-                let desc = seq_desc.take().unwrap_or_default();
+                let desc = seq_desc
+                    .take()
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or_else(|| ".".to_string());
+
                 writeln!(
                     writer,
                     "{}\t{}\t{}\t{}\t{}\t{}",
@@ -53,11 +57,14 @@ pub fn run(fname: &str) -> Result<()> {
             break;
         }
 
-        // Process each line of the input file
         if line_buf.starts_with(b">") {
-            // If we encounter a new header, write the prior record's index entry
+            // New header found — flush prior record
             if let Some(name) = seq_name.take() {
-                let desc = seq_desc.take().unwrap_or_default();
+                let desc = seq_desc
+                    .take()
+                    .filter(|s| !s.is_empty())
+                    .unwrap_or_else(|| ".".to_string());
+
                 writeln!(
                     writer,
                     "{}\t{}\t{}\t{}\t{}\t{}",
@@ -65,12 +72,11 @@ pub fn run(fname: &str) -> Result<()> {
                 )?;
             }
 
-            // Parse header string
             let header_str = String::from_utf8_lossy(&line_buf[1..]).trim_end().to_string();
             let mut parts = header_str.splitn(2, |c: char| c.is_whitespace());
 
-            seq_name = Some(parts.next().unwrap_or("").to_string());
-            seq_desc = Some(parts.next().unwrap_or("").to_string());
+            seq_name = parts.next().map(|s| s.to_string());
+            seq_desc = parts.next().map(|s| s.trim_start().replace('\t', " "));
 
             seq_len = 0;
             seq_offset = current_offset + bytes_read as u64;
@@ -78,10 +84,8 @@ pub fn run(fname: &str) -> Result<()> {
             line_width = 0;
             is_first_seq_line = true;
         } else if seq_name.is_some() {
-            // Sequence lines logic
             let raw_len = line_buf.len() as u64;
             if raw_len > 0 {
-                // Determine newline length (\n vs \r\n)
                 let newline_len = if line_buf.ends_with(b"\r\n") {
                     2
                 } else if line_buf.ends_with(b"\n") {

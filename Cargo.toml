@@ -1,0 +1,10 @@
+[package]
+name = "myrs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.6.4", features = ["derive"] }
+needletail = "0.7.3"
+flate2 = "1.1.9"
+thiserror = "2.0.19"

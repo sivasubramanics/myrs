@@ -9,17 +9,17 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    Length {
+    FaLength {
         #[arg(short, long)]
         fname: String,
     },
 
-    Summary {
+    FaStats {
         #[arg(short, long)]
         fname: String,
     },
 
-    Filter {
+    FaFilter {
         /// input fasta
         #[arg(short, long)]
         fname: String,

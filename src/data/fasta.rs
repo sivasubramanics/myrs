@@ -1,10 +1,11 @@
 use crate::error::{AppError, Result};
-use crate::utils::helpers::{trim_ascii_whitespace, has_valid_extension};
-use flate2::bufread::MultiGzDecoder;
-use std::fs::File;
-use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
-use std::path::Path;
+use crate::utils::helpers::{has_valid_extension, trim_ascii_whitespace};
 use crate::utils::{DEFAULT_BUF_SIZE, VALID_FASTA_EXTENSIONS};
+use flate2::bufread::MultiGzDecoder;
+use log::{debug, info, trace}; // Added logging imports
+use std::fs::File;
+use std::io::{self, BufRead, BufReader, Read, Write, BufWriter};
+use std::path::Path;
 
 /// Represents a FASTA record using raw byte vectors to avoid UTF-8 validation overhead.
 #[derive(Debug, Clone, Default)]
@@ -60,7 +61,7 @@ impl FastaRecord {
         crate::utils::helpers::get_gc_percentage(self.clone())
     }
 
-    /// get number of N's
+    /// Get number of N's
     #[inline]
     pub fn num_n(&self) -> usize {
         let counts = self.num_atgc();
@@ -106,8 +107,13 @@ impl FastaReader<Box<dyn BufRead>> {
             .map(|ext| ext.eq_ignore_ascii_case("gz"))
             .unwrap_or(false);
 
+        info!(
+            "Reading fasta file {:?} (gzipped: {})",
+            path_ref.display(),
+            is_gzipped
+        );
+
         let reader: Box<dyn BufRead> = if is_gzipped {
-            // Buffer raw file bytes first, then pass through MultiGzDecoder
             let file_buf = BufReader::with_capacity(DEFAULT_BUF_SIZE, file);
             let gz_decoder = MultiGzDecoder::new(file_buf);
             Box::new(BufReader::with_capacity(DEFAULT_BUF_SIZE, gz_decoder))
@@ -137,6 +143,7 @@ impl<R: BufRead> FastaReader<R> {
                 self.line_buf.clear();
                 let bytes_read = self.reader.read_until(b'\n', &mut self.line_buf)?;
                 if bytes_read == 0 {
+                    debug!("Reached end of input stream after {} records.", self.current_id);
                     return Ok(false);
                 }
 
@@ -186,6 +193,13 @@ impl<R: BufRead> FastaReader<R> {
             record.sequence.extend_from_slice(trimmed);
         }
 
+        trace!(
+            "Parsed record ID {}: name='{}', len={} bp",
+            record.id,
+            record.name,
+            record.len()
+        );
+
         self.current_id += 1;
         Ok(true)
     }
@@ -215,6 +229,9 @@ impl FastaWriter<BufWriter<File>> {
             path: path_ref.to_path_buf(),
             source: e,
         })?;
+
+        info!("Created output FASTA file {:?}", path_ref.display());
+
         let writer = BufWriter::with_capacity(DEFAULT_BUF_SIZE, file);
         Ok(Self::new(writer))
     }
@@ -236,6 +253,8 @@ impl<W: Write> FastaWriter<W> {
         sequence: &[u8],
         fold: Option<usize>,
     ) -> io::Result<()> {
+        trace!("Writing record '{}", name);
+
         self.writer.write_all(b">")?;
         self.writer.write_all(name.as_bytes())?;
 
@@ -264,6 +283,7 @@ impl<W: Write> FastaWriter<W> {
     }
 
     pub fn flush(&mut self) -> io::Result<()> {
+        debug!("Flushing output writer stream buffer");
         self.writer.flush()
     }
 }

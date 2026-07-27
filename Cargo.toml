@@ -8,3 +8,6 @@ clap = { version = "4.6.4", features = ["derive"] }
 needletail = "0.7.3"
 flate2 = "1.1.9"
 thiserror = "2.0.19"
+env_logger = "0.11.11"
+chrono = "0.4.45"
+log = "0.4.33"

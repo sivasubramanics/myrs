@@ -1,11 +1,9 @@
-use crate::error::Result;
 use crate::data::fasta::{FastaReader, FastaRecord, FastaWriter};
-use std::path::Path;
+use crate::error::Result;
 use crate::utils::DEFAULT_FOLD_WIDTH;
+use log::{debug, info, warn}; // Import standard logging macros
+use std::path::Path;
 
-/// Generates an output filename by suffixing before the file extension.
-/// e.g., "sample.fasta" -> "sample_filtered.fasta"
-/// e.g., "sample.fasta.gz" -> "sample_filtered.fasta.gz"
 fn generate_output_filename<P: AsRef<Path>>(input_path: P) -> String {
     let path = input_path.as_ref();
     let path_str = path.to_string_lossy();
@@ -13,18 +11,17 @@ fn generate_output_filename<P: AsRef<Path>>(input_path: P) -> String {
     if path_str.ends_with(".gz") {
         let base = &path_str[..path_str.len() - 3];
         if let Some(dot_idx) = base.rfind('.') {
-            format!("{}_filtered{}.gz", &base[..dot_idx], &base[dot_idx..])
+            format!("{}.filtered{}.gz", &base[..dot_idx], &base[dot_idx..])
         } else {
-            format!("{}_filtered.gz", base)
+            format!("{}.filtered.gz", base)
         }
     } else if let Some(dot_idx) = path_str.rfind('.') {
-        format!("{}_filtered{}", &path_str[..dot_idx], &path_str[dot_idx..])
+        format!("{}.filtered{}", &path_str[..dot_idx], &path_str[dot_idx..])
     } else {
-        format!("{}_filtered", path_str)
+        format!("{}.filtered", path_str)
     }
 }
 
-/// Evaluates filtering conditions against a FASTA record.
 fn passes_filters(
     record: &FastaRecord,
     min_len: Option<usize>,
@@ -62,7 +59,12 @@ pub fn run(
 ) -> Result<()> {
     let out_fname = generate_output_filename(fname);
 
-    // from_path and create_path return crate::error::Result
+    info!("Starting filter operation on input file: {}", fname);
+    debug!(
+        "Filter criteria applied - min_len: {:?}, max_len: {:?}, min_gc: {:?}",
+        min_len, max_len, min_gc
+    );
+
     let mut reader = FastaReader::from_path(fname)?;
     let mut writer = FastaWriter::create_path(&out_fname)?;
 
@@ -70,7 +72,6 @@ pub fn run(
     let mut total_records = 0usize;
     let mut passed_records = 0usize;
 
-    // read_next returns io::Result, but ? automatically converts io::Error -> AppError
     while reader.read_next(&mut record)? {
         total_records += 1;
 
@@ -82,10 +83,16 @@ pub fn run(
 
     writer.flush()?;
 
-    println!(
-        "Filtered {}/{} records written to {}",
-        passed_records, total_records, out_fname
-    );
+    let removed_records = total_records - passed_records;
+
+    if total_records == 0 {
+        warn!("Input file {} contains zero records.", fname);
+    } else {
+        info!(
+            "Removed {} sequence(s) from file. Kept {}/{} records written to {}",
+            removed_records, passed_records, total_records, out_fname
+        );
+    }
 
     Ok(())
 }

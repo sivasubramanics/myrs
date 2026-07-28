@@ -1,5 +1,6 @@
 use std::io;
 use std::path::PathBuf;
+use log::error;
 use thiserror::Error;
 
 /// Project-wide result alias.
@@ -31,4 +32,7 @@ pub enum AppError {
 
     #[error("Invalid input: {0}")]
     InvalidInput(String),
+    
+    #[error("Threading error: {0}")]
+    ThreadingError(String),
 }

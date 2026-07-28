@@ -6,8 +6,7 @@ use crate::utils::helpers::{has_valid_extension, open_file, trim_ascii_whitespac
 use flate2::bufread::MultiGzDecoder;
 use flate2::write::GzEncoder;
 use flate2::Compression;
-use log::{debug, info, trace};
-use std::fs::File;
+use log::{debug, error, info, trace};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
 
@@ -82,7 +81,7 @@ impl FastqReader<Box<dyn BufRead>> {
                 .and_then(|e| e.to_str())
                 .unwrap_or("none")
                 .to_string();
-
+            error!("invalid FASTQ file extension: {:?}", path_ref.display());
             return Err(AppError::InvalidExtension {
                 ext,
                 path: path_ref.to_path_buf(),

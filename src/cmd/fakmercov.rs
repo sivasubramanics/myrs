@@ -1,16 +1,15 @@
 use crate::data::fasta::{FastaReader, FastaRecord};
 use crate::data::kmc::Kmc;
-use crate::data::kmer::Kmer;
 use crate::error::{AppError, Result};
 use crate::utils::helpers::create_file;
 use crossbeam_channel::{bounded, Receiver, Sender};
+use fxhash::FxHashSet;
 use log::info;
-use std::collections::HashSet;
 use std::io::{BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
-use fxhash::FxHashSet;
+
 
 /// Result structure for a single processed FASTA sequence
 struct RecordKmerStats {
@@ -22,6 +21,84 @@ struct RecordKmerStats {
     query_total_n: u64,
     mean_ref: f64,
     mean_query: f64,
+}
+
+/// Convert a k-mer byte slice (ASCII A, C, G, T) into a bit-packed 2-bit u64
+#[inline(always)]
+fn encode_kmer(slice: &[u8]) -> Option<u64> {
+    let mut val: u64 = 0;
+    for &b in slice {
+        let code = match b {
+            b'A' | b'a' => 0b00,
+            b'C' | b'c' => 0b01,
+            b'G' | b'g' => 0b10,
+            b'T' | b't' => 0b11,
+            _ => return None, // Non-ACGT characters (e.g., 'N')
+        };
+        val = (val << 2) | code;
+    }
+    Some(val)
+}
+
+fn process_fasta_record(record: &FastaRecord, kmc: &Kmc, k: usize) -> RecordKmerStats {
+    let ref_name = record.name.clone();
+    let ref_len = record.len();
+
+    // Zero-allocation hash set using packed u64 k-mers (for K <= 32)
+    // Pre-allocate capacity to reduce re-hash allocations
+    let estimated_kmers = ref_len.saturating_sub(k - 1);
+    let mut seen_kmers: FxHashSet<u64> = FxHashSet::with_capacity_and_hasher(
+        estimated_kmers,
+        Default::default()
+    );
+
+    let mut query_total_n: u64 = 0;
+    let mut query_uniq_n: usize = 0;
+    let mut ref_total_n: usize = 0;
+
+    for kmer_bytes in record.kmers(k, true) {
+        ref_total_n += 1;
+
+        // Query KMC count using byte slice
+        let count = kmc.get_count(&kmer_bytes);
+
+        if count > 0 {
+            query_total_n += count as u64;
+
+            if let Some(packed) = encode_kmer(&kmer_bytes) {
+                if seen_kmers.insert(packed) {
+                    query_uniq_n += 1;
+                }
+            }
+        } else if let Some(packed) = encode_kmer(&kmer_bytes) {
+            seen_kmers.insert(packed);
+        }
+    }
+
+    let ref_unique_n = seen_kmers.len();
+
+    let mean_ref = if ref_unique_n > 0 {
+        query_total_n as f64 / ref_unique_n as f64
+    } else {
+        0.0
+    };
+
+    let mean_query = if ref_total_n > 0 {
+        query_total_n as f64 / ref_total_n as f64
+    } else {
+        0.0
+    };
+
+    RecordKmerStats {
+        ref_name,
+        ref_len,
+        ref_total_n,
+        ref_unique_n,
+        query_uniq_n,
+        query_total_n,
+        mean_ref,
+        mean_query,
+    }
 }
 
 pub fn run(
@@ -135,106 +212,4 @@ pub fn run(
     info!("successfully calculated k-mer statistics for '{}'.", reference);
 
     Ok(())
-}
-
-
-/// 2-bit encodes an ASCII DNA slice into a fixed [u64; 4] stack buffer (up to k=128).
-/// Returns [u64; 4] representing the k-mer.
-#[inline]
-fn pack_kmer_2bit(kmer_bytes: &[u8]) -> Option<[u64; 4]> {
-    let mut packed = [0u64; 4];
-    for (i, &base) in kmer_bytes.iter().enumerate() {
-        let val = match base {
-            b'A' | b'a' => 0u64,
-            b'C' | b'c' => 1u64,
-            b'G' | b'g' => 2u64,
-            b'T' | b't' => 3u64,
-            _ => return None, // Reject k-mers containing 'N' or non-standard bases
-        };
-        let word_idx = i / 32;
-        let bit_shift = (i % 32) * 2;
-        packed[word_idx] |= val << bit_shift;
-    }
-    Some(packed)
-}
-
-/// Compute KMC k-mer statistics for a single FASTA sequence record
-#[inline]
-fn process_fasta_record(record: &FastaRecord, kmc: &Kmc, k: usize) -> RecordKmerStats {
-    if record.len() < k {
-        return RecordKmerStats {
-            ref_name: record.name.clone(),
-            ref_len: record.len(),
-            ref_unique_n: 0,
-            ref_total_n: 0,
-            query_uniq_n: 0,
-            query_total_n: 0,
-            mean_ref: 0.0,
-            mean_query: 0.0,
-        };
-    }
-
-    let mut total_kmers_ref = 0usize;
-
-    // Fast non-cryptographic set storing zero-allocation [u64; 4] keys.
-    // Perfectly supports any k up to 128!
-    let mut unique_ref_kmers: FxHashSet<[u64; 4]> = FxHashSet::default();
-
-    // Pre-allocate set capacity to avoid dynamic re-hashes during chromosome scanning
-    unique_ref_kmers.reserve(record.len().saturating_sub(k - 1));
-
-    let mut obs_unique_kmers = 0usize;
-    let mut obs_kmer_total_count = 0u64;
-
-    // Single-pass sliding window
-    for kmer_ref in record.canonical_kmers(k) {
-        total_kmers_ref += 1;
-
-        info!("Processing k-mer: {:?}", std::str::from_utf8(kmer_ref.sequence()).unwrap_or("Invalid UTF-8"));
-
-        // 1. Get raw ASCII bytes for canonical k-mer
-        let bytes = kmer_ref.canonical_bytes();
-
-        // 2. Pack into a zero-allocation 256-bit stack value
-        let packed_key = pack_kmer_2bit(&bytes);
-
-        // 3. Insert into FxHashSet. Returns true ONLY if newly encountered.
-        if let Some(packed_key) = pack_kmer_2bit(&bytes) {
-            if unique_ref_kmers.insert(packed_key) {
-                let kmer = Kmer::new(&bytes);
-                let count = kmc.get_kmer_count(&kmer) as u64;
-                info!("Checking k-mer: {:?}, Count: {}", std::str::from_utf8(kmer.sequence()).unwrap_or("Invalid UTF-8"), count);
-                if count > 0 {
-                    info!("Observed k-mer: {:?}, Count: {}", std::str::from_utf8(kmer.sequence()).unwrap_or("Invalid UTF-8"), count);
-                    obs_unique_kmers += 1;
-                    obs_kmer_total_count += count;
-                }
-            }
-        }
-    }
-
-    let n_unique_ref_kmers = unique_ref_kmers.len();
-
-    let mean_ref = if n_unique_ref_kmers > 0 {
-        obs_kmer_total_count as f64 / n_unique_ref_kmers as f64
-    } else {
-        0.0
-    };
-
-    let mean_query = if obs_unique_kmers > 0 {
-        obs_kmer_total_count as f64 / obs_unique_kmers as f64
-    } else {
-        0.0
-    };
-
-    RecordKmerStats {
-        ref_name: record.name.clone(),
-        ref_len: record.len(),
-        ref_unique_n: n_unique_ref_kmers,
-        ref_total_n: total_kmers_ref,
-        query_uniq_n: obs_unique_kmers,
-        query_total_n: obs_kmer_total_count,
-        mean_ref,
-        mean_query,
-    }
 }

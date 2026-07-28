@@ -98,14 +98,8 @@ impl FastaRecord {
 
     /// Iterates over all k-mers of length `k`.
     #[inline]
-    pub fn kmers(&self, k: usize) -> KmerIterator<'_> {
-        KmerIterator::new(&self.sequence, k, false)
-    }
-
-    /// Iterates ONLY over canonical k-mers (lexicographically smaller strand).
-    #[inline]
-    pub fn canonical_kmers(&self, k: usize) -> KmerIterator<'_> {
-        KmerIterator::new(&self.sequence, k, true)
+    pub fn kmers(&self, k: usize, canonical: bool) -> KmerIterator {
+        KmerIterator::new(&self.sequence, k, canonical)
     }
 }
 

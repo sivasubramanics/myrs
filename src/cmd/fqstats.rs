@@ -12,8 +12,6 @@ use std::thread;
 const PHRED_OFFSET: u8 = 33;
 const CHUNK_SIZE: usize = 10_000;
 
-// Pre-computed lookup table for fast nucleotide indexing
-// Maps ASCII byte directly to 0=A, 1=T, 2=G, 3=C, 4=N, 255=Other
 const BASE_LUT: [u8; 256] = {
     let mut lut = [255u8; 256];
     lut[b'A' as usize] = 0; lut[b'a' as usize] = 0;
@@ -115,7 +113,6 @@ pub fn run(fname: &str, nthreads: usize) -> Result<()> {
             let _ = tx_chunks.send(chunk_buffer);
         }
 
-        // `tx_chunks` is dropped automatically when this thread terminates!
         Ok(())
     });
 
@@ -198,55 +195,6 @@ fn process_single_record(rec: &FastqRecord, stats: &mut ChunkStats) {
         if q >= q20_threshold { stats.bases_ge_q20 += 1; }
         if q >= q30_threshold { stats.bases_ge_q30 += 1; }
     }
-}
-
-/// Optimized multi-threaded chunk processor using lookup tables
-fn process_chunk(records: &[FastqRecord]) -> ChunkStats {
-    records
-        .par_iter()
-        .map(|rec| {
-            let mut local = ChunkStats::new();
-            let len = rec.sequence.len();
-
-            local.total_reads = 1;
-            local.total_bases = len;
-            local.min_length = len;
-            local.max_length = len;
-
-            let mut counts = [0usize; 5];
-            let q20_threshold = PHRED_OFFSET + 20;
-            let q30_threshold = PHRED_OFFSET + 30;
-
-            // Tight loop for sequence base counting via LUT
-            for &b in &rec.sequence {
-                let idx = BASE_LUT[b as usize];
-                if idx < 5 {
-                    counts[idx as usize] += 1;
-                }
-            }
-
-            local.count_a = counts[0];
-            local.count_t = counts[1];
-            local.count_g = counts[2];
-            local.count_c = counts[3];
-            local.count_n = counts[4];
-
-            // Tight loop for quality scores
-            for &q in &rec.quality {
-                local.min_qual_char = local.min_qual_char.min(q);
-                local.max_qual_char = local.max_qual_char.max(q);
-
-                if q >= q20_threshold {
-                    local.bases_ge_q20 += 1;
-                }
-                if q >= q30_threshold {
-                    local.bases_ge_q30 += 1;
-                }
-            }
-
-            local
-        })
-        .reduce(ChunkStats::new, |a, b| a.merge(b))
 }
 
 struct CalculatedSummary<'a> {
@@ -378,7 +326,7 @@ impl<'a> CalculatedSummary<'a> {
         }
 
         writer.flush()?;
-        debug!("saved summary metrics to TSV report: {}", tsv_path);
+        info!("saved summary stats to TSV file: {}", tsv_path);
         Ok(())
     }
 }

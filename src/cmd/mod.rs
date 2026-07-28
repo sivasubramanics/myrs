@@ -5,3 +5,5 @@ pub mod fafai;
 pub mod faonerecord;
 pub mod fasomerecords;
 pub mod fqstats;
+pub mod dumpkmc;
+pub mod fakmercov;

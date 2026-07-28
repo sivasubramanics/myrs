@@ -8,6 +8,7 @@ use log::{debug, info, trace}; // Added logging imports
 use std::fs::File;
 use std::io::{self, BufRead, BufReader, Read, Write, BufWriter};
 use std::path::Path;
+use crate::data::kmer::KmerIterator;
 
 /// Represents a FASTA record using raw byte vectors to avoid UTF-8 validation overhead.
 #[derive(Debug, Clone, Default)]
@@ -93,6 +94,18 @@ impl FastaRecord {
         if len % 2 != 0 {
             self.sequence[len / 2] = COMPLEMENT[self.sequence[len / 2] as usize];
         }
+    }
+
+    /// Iterates over all k-mers of length `k`.
+    #[inline]
+    pub fn kmers(&self, k: usize) -> KmerIterator<'_> {
+        KmerIterator::new(&self.sequence, k, false)
+    }
+
+    /// Iterates ONLY over canonical k-mers (lexicographically smaller strand).
+    #[inline]
+    pub fn canonical_kmers(&self, k: usize) -> KmerIterator<'_> {
+        KmerIterator::new(&self.sequence, k, true)
     }
 }
 
@@ -245,18 +258,6 @@ impl<R: BufRead> Iterator for FastaReader<R> {
 pub struct FastaWriter<W: Write> {
     writer: W,
 }
-
-// impl FastaWriter<BufWriter<File>> {
-//     pub fn create_path<P: AsRef<Path>>(path: P) -> Result<Self> {
-//         let path_ref = path.as_ref();
-//         let file = create_file(path_ref)?;
-//
-//         info!("created output FASTA file {:?}", path_ref.display());
-//
-//         let writer = BufWriter::with_capacity(DEFAULT_BUF_SIZE, file);
-//         Ok(Self::new(writer))
-//     }
-// }
 
 impl FastaWriter<Box<dyn Write>> {
     pub fn create_path<P: AsRef<Path>>(path: P) -> Result<Self> {

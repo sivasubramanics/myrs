@@ -8,24 +8,24 @@ version,
 about = "(learning) small rust project with utility tools.",
 arg_required_else_help = true,
 // Custom formatted help screen for top-level `./myrs --help`
-override_help = "(learning) small rust project with utility tools.
-
-Usage: myrs <SUBCOMMAND>
-
-\x1b[4mFASTA Utilities:\x1b[0m
-  fa-length        Calculate and report sequence lengths for records in a FASTA file
-  fa-stats         Generate summary statistics (GC content, N50, sequence counts)
-  fa-filter        Filter FASTA records by sequence length and GC percentage
-  fa-fai           Generate a .faidx index file for fast random access
-  fa-one-record    Extract a single sequence record from an indexed FASTA file
-  fa-some-records  Extract multiple sequence records from a FASTA file
-
-\x1b[4mFASTQ Utilities:\x1b[0m
-  fq-stats         Generate summary statistics for FASTQ files
-
-Options:
--h, --help       Print help
--V, --version    Print version"
+// override_help = "(learning) small rust project with utility tools.
+//
+// Usage: myrs <SUBCOMMAND>
+//
+// \x1b[4mFASTA Utilities:\x1b[0m
+//   fa-length        Calculate and report sequence lengths for records in a FASTA file
+//   fa-stats         Generate summary statistics (GC content, N50, sequence counts)
+//   fa-filter        Filter FASTA records by sequence length and GC percentage
+//   fa-fai           Generate a .faidx index file for fast random access
+//   fa-one-record    Extract a single sequence record from an indexed FASTA file
+//   fa-some-records  Extract multiple sequence records from a FASTA file
+//
+// \x1b[4mFASTQ Utilities:\x1b[0m
+//   fq-stats         Generate summary statistics for FASTQ files
+//
+// Options:
+// -h, --help       Print help
+// -V, --version    Print version"
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -135,6 +135,36 @@ pub enum Commands {
         #[arg(short, long)]
         fname: String,
         /// Number of threads
+        #[arg(short = 't', long = "threads", default_value_t = 2)]
+        threads: usize,
+    },
+
+    /// Dump KMC database k-mers and their counts to text format
+    #[command(arg_required_else_help = true)]
+    DumpKMC {
+        /// Base prefix name of KMC database (e.g. 'db' for db.kmc_pre / db.kmc_suf)
+        #[arg(short = 'p', long = "kmc")]
+        fname: String,
+
+        /// Output file path (defaults to stdout if omitted)
+        #[arg(short, long)]
+        output: Option<String>,
+
+        /// Pre-load suffix buffers completely into memory instead of memory mapping
+        #[arg(short, long, default_value_t = false)]
+        in_memory: bool,
+    },
+
+    #[command(arg_required_else_help = true)]
+    FaKmerCOV {
+        #[arg(short = 'r', long = "reference")]
+        fname: String,
+        #[arg(short = 'k', long = "kmc")]
+        kmc_db: String,
+        #[arg(short = 'o', long = "output")]
+        output: String,
+        #[arg(short = 'm', long = "memory", default_value_t = false)]
+        in_memory: bool,
         #[arg(short = 't', long = "threads", default_value_t = 2)]
         threads: usize,
     }

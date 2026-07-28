@@ -9,10 +9,8 @@ use clap::Parser;
 use crate::logger::init_logger;
 use crate::utils::helpers::format_time;
 use log::info;
-use std::time::Instant;
 use std::process;
-
-
+use std::time::Instant;
 
 fn main() {
     let start_time = Instant::now();
@@ -22,9 +20,7 @@ fn main() {
 
     // run the application
     if let Err(_err) = run_app() {
-        // since subcommands use error!() before returning an Err,
-        // the error message has already been printed via init_logger().
-        // simply exiting with a non-zero code.
+        log::error!("{}", _err);
         process::exit(1);
     }
 
@@ -72,7 +68,7 @@ fn run_app() -> Result<(), Box<dyn std::error::Error>> {
             fold_width,
         } => {
             cmd::faonerecord::run(&fname, &name, output, fold_width)?;
-        },
+        }
 
         cli::Commands::FaSomeRecords {
             fname,
@@ -88,15 +84,30 @@ fn run_app() -> Result<(), Box<dyn std::error::Error>> {
                 output,
                 fold_width,
             )?;
-        },
+        }
 
-        cli::Commands::FqStats {
-            fname,
-            threads
-        } => {
+        cli::Commands::FqStats { fname, threads } => {
             cmd::fqstats::run(&fname, threads)?;
         }
-    }
+
+        cli::Commands::DumpKMC {
+            fname,
+            output,
+            in_memory,
+        } => {
+            cmd::dumpkmc::run(&fname, output, in_memory)?;
+        }
+
+        cli::Commands::FaKmerCOV {
+            fname,
+            kmc_db,
+            output,
+            in_memory,
+            threads,
+        } => {
+            cmd::fakmercov::run(&fname, &kmc_db, &output, in_memory, threads)?;
+        }
+    } // <-- Added missing closing brace for `match`
 
     Ok(())
 }

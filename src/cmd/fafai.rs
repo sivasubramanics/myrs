@@ -1,10 +1,8 @@
 use crate::error::{AppError, Result};
 use log::{error, info, warn};
-use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
-use crate::data::fasta::FastaReader;
-use crate::utils::helpers::{create_file, open_file, is_compressed, has_valid_extension};
+use crate::utils::helpers::{create_file, open_file, has_valid_extension};
 use crate::utils::VALID_FASTA_EXTENSIONS;
 
 pub fn run(fname: &str) -> Result<()> {

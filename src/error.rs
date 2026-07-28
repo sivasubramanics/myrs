@@ -1,6 +1,5 @@
 use std::io;
 use std::path::PathBuf;
-use log::error;
 use thiserror::Error;
 
 /// Project-wide result alias.
@@ -21,18 +20,27 @@ pub enum AppError {
         source: io::Error,
     },
 
-    #[error("I/O error during FASTA processing: {0}")]
+    #[error("I/O error during processing: {0}")]
     Io(#[from] io::Error),
 
     #[error("Gzip decoding failed: {0}")]
     GzipDecode(String),
+
+    #[error("Memory mapping failed: {0}")]
+    Mmap(io::Error),
 
     #[error("Input file is compressed. Please decompress before indexing.")]
     CompressedFileNotSupported,
 
     #[error("Invalid input: {0}")]
     InvalidInput(String),
-    
+
+    #[error("KMC database error: {0}")]
+    KmcError(String),
+
     #[error("Threading error: {0}")]
     ThreadingError(String),
+
+    #[error("Generic error: {0}")]
+    Generic(String),
 }

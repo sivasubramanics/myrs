@@ -111,7 +111,7 @@ pub struct FastaReader<R> {
     has_next_header: bool,
 }
 
-impl FastaReader<Box<dyn BufRead>> {
+impl FastaReader<Box<dyn BufRead + Send>> {
     /// Opens a file with standard or gzipped FASTA contents.
     /// Returns a trait object `Box<dyn BufRead>` to support both transparently.
     pub fn from_path<P: AsRef<Path>>(path: P) -> Result<Self> {
@@ -144,7 +144,8 @@ impl FastaReader<Box<dyn BufRead>> {
             is_gzipped
         );
 
-        let reader: Box<dyn BufRead> = if is_gzipped {
+        // Include + Send bound on the boxed trait object
+        let reader: Box<dyn BufRead + Send> = if is_gzipped {
             let file_buf = BufReader::with_capacity(DEFAULT_BUF_SIZE, file);
             let gz_decoder = MultiGzDecoder::new(file_buf);
             Box::new(BufReader::with_capacity(DEFAULT_BUF_SIZE, gz_decoder))

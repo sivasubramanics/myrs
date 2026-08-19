@@ -107,7 +107,16 @@ fn run_app() -> Result<(), Box<dyn std::error::Error>> {
         } => {
             cmd::fakmercov::run(&fname, &kmc_db, &output, in_memory, threads)?;
         }
-    } // <-- Added missing closing brace for `match`
+
+        cli::Commands::HicContactMatrix(args) => {
+            let filters = cmd::hicmatrix::FilterOptions {
+                min_mapq: args.min_mapq,
+                max_nm: Some(args.max_nm),
+                min_as: Some(args.min_as),
+            };
+            cmd::hicmatrix::run(&args.input, args.binsize, args.threads, filters)?;
+        }
+    }
 
     Ok(())
 }

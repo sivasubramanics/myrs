@@ -7,3 +7,4 @@ pub mod fasomerecords;
 pub mod fqstats;
 pub mod dumpkmc;
 pub mod fakmercov;
+pub mod hicmatrix;

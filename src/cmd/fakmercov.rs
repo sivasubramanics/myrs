@@ -9,7 +9,7 @@ use std::io::{self, BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
-
+use crate::data::bkmer::{BitPackedKmer128Iterator, PackedKmer128};
 
 /// Result structure for a single processed FASTA sequence
 struct RecordKmerStats {
@@ -44,33 +44,33 @@ fn process_fasta_record(record: &FastaRecord, kmc: &Kmc, k: usize) -> RecordKmer
     let ref_name = record.name.clone();
     let ref_len = record.len();
 
-    // Zero-allocation hash set using packed u64 k-mers (for K <= 32)
-    // Pre-allocate capacity to reduce re-hash allocations
     let estimated_kmers = ref_len.saturating_sub(k - 1);
-    let mut seen_kmers: FxHashSet<u64> = FxHashSet::with_capacity_and_hasher(
+
+    // Hash set holding 256-bit bit-packed K-mers
+    let mut seen_kmers: FxHashSet<PackedKmer128> = FxHashSet::with_capacity_and_hasher(
         estimated_kmers,
-        Default::default()
+        Default::default(),
     );
 
     let mut query_total_n: u64 = 0;
     let mut query_uniq_n: usize = 0;
     let mut ref_total_n: usize = 0;
 
-    for kmer_bytes in record.kmers(k, true) {
+    // Zero-allocation iteration for K up to 127
+    for kmer in BitPackedKmer128Iterator::new(record.sequence(), k) {
         ref_total_n += 1;
 
-        // Query KMC count using byte slice
-        let count = kmc.get_count(&kmer_bytes);
+        // Query KMC count
+        let count = kmc.get_count(&kmer);
+
         if count > 0 {
             query_total_n += count as u64;
 
-            if let Some(packed) = encode_kmer(&kmer_bytes) {
-                if seen_kmers.insert(packed) {
-                    query_uniq_n += 1;
-                }
+            if seen_kmers.insert(kmer) {
+                query_uniq_n += 1;
             }
-        } else if let Some(packed) = encode_kmer(&kmer_bytes) {
-            seen_kmers.insert(packed);
+        } else {
+            seen_kmers.insert(kmer);
         }
     }
 

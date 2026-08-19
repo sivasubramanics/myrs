@@ -25,6 +25,7 @@ pub fn run(fname: &str) -> Result<()> {
     let mut ge2k = 0;
     let mut ge10k = 0;
     let mut ge1m = 0;
+    let mut ge10m = 0;
 
     for record in reader {
         let record = record?;
@@ -37,13 +38,14 @@ pub fn run(fname: &str) -> Result<()> {
 
         lengths.push(len);
 
-        if len >= 1_000_000 { ge1m += 1; }
-        if len >= 10_000    { ge10k += 1; }
-        if len >= 2_000     { ge2k += 1; }
-        if len >= 1_000     { ge1k += 1; }
-        if len >= 500       { ge500 += 1; }
-        if len >= 200       { ge200 += 1; }
-        if len >= 100       { ge100 += 1; }
+        if len >= 10_000_000 { ge10m += 1; }
+        if len >= 1_000_000  { ge1m  += 1; }
+        if len >= 10_000     { ge10k += 1; }
+        if len >= 2_000      { ge2k  += 1; }
+        if len >= 1_000      { ge1k  += 1; }
+        if len >= 500        { ge500 += 1; }
+        if len >= 200        { ge200 += 1; }
+        if len >= 100        { ge100 += 1; }
 
         non_atgc += record.num_n();
     }
@@ -93,6 +95,7 @@ pub fn run(fname: &str) -> Result<()> {
     info!("{:<width$} : {}", "Count >= 2 Kb", num_to_str(ge2k as u64), width = DEFAULT_COLUMN_WIDTH);
     info!("{:<width$} : {}", "Count >= 10 Kb", num_to_str(ge10k as u64), width = DEFAULT_COLUMN_WIDTH);
     info!("{:<width$} : {}", "Count >= 1 Mb", num_to_str(ge1m as u64), width = DEFAULT_COLUMN_WIDTH);
+    info!("{:<width$} : {}", "Count >= 10 Mb", num_to_str(ge10m as u64), width = DEFAULT_COLUMN_WIDTH);
     info!("=================================================");
 
     let tsv_path = format!("{}.summary.tsv", fname);
@@ -117,6 +120,7 @@ pub fn run(fname: &str) -> Result<()> {
     writeln!(writer, "count_ge_2kb\t{}", ge2k)?;
     writeln!(writer, "count_ge_10kb\t{}", ge10k)?;
     writeln!(writer, "count_ge_1mb\t{}", ge1m)?;
+    writeln!(writer, "count_ge_10mb\t{}", ge10m)?;
 
     writer.flush()?;
 

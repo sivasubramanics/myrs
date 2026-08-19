@@ -1,31 +1,12 @@
-use clap::{Parser, Subcommand};
+use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser, Debug)]
 #[command(
-name = "myrs",
-author,
-version,
-about = "(learning) small rust project with utility tools.",
-arg_required_else_help = true,
-// Custom formatted help screen for top-level `./myrs --help`
-// override_help = "(learning) small rust project with utility tools.
-//
-// Usage: myrs <SUBCOMMAND>
-//
-// \x1b[4mFASTA Utilities:\x1b[0m
-//   fa-length        Calculate and report sequence lengths for records in a FASTA file
-//   fa-stats         Generate summary statistics (GC content, N50, sequence counts)
-//   fa-filter        Filter FASTA records by sequence length and GC percentage
-//   fa-fai           Generate a .faidx index file for fast random access
-//   fa-one-record    Extract a single sequence record from an indexed FASTA file
-//   fa-some-records  Extract multiple sequence records from a FASTA file
-//
-// \x1b[4mFASTQ Utilities:\x1b[0m
-//   fq-stats         Generate summary statistics for FASTQ files
-//
-// Options:
-// -h, --help       Print help
-// -V, --version    Print version"
+    name = "myrs",
+    author,
+    version,
+    about = "(learning) small rust project with utility tools.",
+    arg_required_else_help = true
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -111,11 +92,11 @@ pub enum Commands {
 
         /// Sequence IDs to extract (supports space-separated and/or comma-separated values)
         #[arg(
-        short = 'n',
-        long = "names",
-        value_delimiter = ',',
-        num_args = 1..,
-        value_name = "NAMES"
+            short = 'n',
+            long = "names",
+            value_delimiter = ',',
+            num_args = 1..,
+            value_name = "NAMES"
         )]
         names_list: Option<Vec<String>>,
 
@@ -167,7 +148,38 @@ pub enum Commands {
         in_memory: bool,
         #[arg(short = 't', long = "threads", default_value_t = 2)]
         threads: usize,
-    }
+    },
 
+    /// Construct sparse contact matrix from Hi-C BAM file
+    #[command(arg_required_else_help = true)]
+    HicContactMatrix(HiCMatrixArgs),
+}
 
+#[derive(Args, Debug, Clone)]
+pub struct HiCMatrixArgs {
+    #[arg(short = 'i', long = "input")]
+    pub input: String,
+
+    #[arg(short = 'b', long = "binsize")]
+    pub binsize: usize,
+
+    #[arg(short = 't', long = "threads", default_value_t = 2)]
+    pub threads: usize,
+
+    #[arg(short = 'q', long = "min-mapq", default_value_t = 30)]
+    pub min_mapq: u8,
+
+    #[arg(
+        long = "max-nm",
+        default_value_t = 5,
+        help = "Maximum allowed edit distance/mismatches (NM tag)"
+    )]
+    pub max_nm: i32,
+
+    #[arg(
+        long = "min-as",
+        default_value_t = 100,
+        help = "Minimum allowed alignment score (AS tag)"
+    )]
+    pub min_as: i32,
 }

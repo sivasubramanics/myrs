@@ -5,8 +5,9 @@ use log::{error, info};
 use memmap2::Mmap;
 use std::borrow::Cow;
 use std::fs::File;
-use std::io::{BufWriter, Read, Seek, SeekFrom, Write};
+use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
+use crate::data::bkmer::PackedKmer128; // Updated import for 128-bit packed K-mers
 
 const MAX_BYTE_COUNT: usize = 1 << 24; // 16 MB chunking page size
 
@@ -16,7 +17,7 @@ const MAX_BYTE_COUNT: usize = 1 << 24; // 16 MB chunking page size
 
 #[derive(Clone)]
 pub struct SignatureMap {
-    sign_length: usize,
+    pub sign_length: usize,
     sign_ref_map: Vec<u32>,
 }
 
@@ -413,7 +414,6 @@ impl Kmc {
         let total_prefix_length = self.prefix_array.len();
 
         let full_kmer_len = self.lut_prefix_length + self.suffix_length;
-        // Allocate a single line buffer including '\t', count placeholder, and '\n'
         let mut line_buf = vec![b'A'; full_kmer_len];
         let mut itoa_buf = itoa::Buffer::new();
 
@@ -441,7 +441,6 @@ impl Kmc {
 
             // Stream k-mers continuously
             for j in start..=end {
-                // Inline entry retrieval (bypasses division when sequential)
                 let entry = self.get_entry(j);
                 let suffix_bytes = self.get_suffix_from_entry(entry);
                 let count = self.get_count_from_entry(entry);
@@ -496,7 +495,6 @@ impl KmerRef for [u8] {
             return 0;
         }
 
-        // Initialize current_signature with first sign_len bases
         let mut curr_sig = 0u32;
         for &b in &self[..sign_len] {
             curr_sig = (curr_sig << 2) | encode_base(b);
@@ -505,7 +503,6 @@ impl KmerRef for [u8] {
         let mut min_sig = sig_map.get_signature(curr_sig as usize);
         let mask = (1u32 << (2 * sign_len)) - 1;
 
-        // Sliding window m-mer extraction matching Java implementation
         for &b in &self[sign_len..] {
             curr_sig = ((curr_sig << 2) & mask) | encode_base(b);
             let sig_val = sig_map.get_signature(curr_sig as usize);
@@ -584,5 +581,89 @@ impl KmerRef for str {
 
     fn get_suffix_fwd(&self, prefix_len: usize, suffix_len: usize) -> Vec<u8> {
         self.as_bytes().get_suffix_fwd(prefix_len, suffix_len)
+    }
+}
+
+// -----------------------------------------------------------------------------
+// PackedKmer128 Implementation for KmerRef (Up to K = 128)
+// -----------------------------------------------------------------------------
+
+impl KmerRef for PackedKmer128 {
+    #[inline]
+    fn get_signature(&self, sig_map: &SignatureMap) -> usize {
+        let sign_len = sig_map.sign_length;
+        let k = self.k();
+
+        if sign_len == 0 || k < sign_len {
+            return 0;
+        }
+
+        let mut min_sig = usize::MAX;
+        let mask = (1u64 << (2 * sign_len)) - 1;
+
+        // Slide m-mer window across 256 bits (4 x u64 words)
+        for i in 0..=(k - sign_len) {
+            let bit_pos = (k - sign_len - i) * 2;
+            let word_idx = 3 - (bit_pos / 64);
+            let shift = bit_pos % 64;
+
+            let mmer_bits = if shift + (sign_len * 2) <= 64 {
+                (self.data()[word_idx] >> shift) & mask
+            } else {
+                // Read bits split across word boundaries
+                let low_bits = self.data()[word_idx] >> shift;
+                let high_bits = self.data()[word_idx - 1] << (64 - shift);
+                (low_bits | high_bits) & mask
+            };
+
+            let sig = sig_map.get_signature(mmer_bits as usize);
+            if sig < min_sig {
+                min_sig = sig;
+            }
+        }
+
+        min_sig
+    }
+
+    #[inline]
+    fn get_prefix_fwd(&self, prefix_len: usize) -> usize {
+        let k = self.k();
+        debug_assert!(prefix_len <= k);
+
+        let bit_pos = (k - prefix_len) * 2;
+        let word_idx = 3 - (bit_pos / 64);
+        let shift = bit_pos % 64;
+
+        let mask = if prefix_len >= 32 { u64::MAX } else { (1u64 << (prefix_len * 2)) - 1 };
+
+        let prefix_bits = if shift + (prefix_len * 2) <= 64 {
+            (self.data()[word_idx] >> shift) & mask
+        } else {
+            let low_bits = self.data()[word_idx] >> shift;
+            let high_bits = self.data()[word_idx - 1] << (64 - shift);
+            (low_bits | high_bits) & mask
+        };
+
+        prefix_bits as usize
+    }
+
+    #[inline]
+    fn get_suffix_fwd(&self, prefix_len: usize, suffix_len: usize) -> Vec<u8> {
+        let k = self.k();
+        let packed_bytes = (suffix_len + 3) / 4;
+        let mut packed = vec![0u8; packed_bytes];
+
+        // Extract 2 bits per base starting right after prefix
+        for i in 0..suffix_len {
+            let base_idx = prefix_len + i;
+            let bit_pos = (k - 1 - base_idx) * 2;
+            let word_idx = 3 - (bit_pos / 64);
+            let shift = bit_pos % 64;
+
+            let base_bits = ((self.data()[word_idx] >> shift) & 0b11) as u8;
+            packed[i / 4] |= base_bits << ((3 - (i % 4)) * 2);
+        }
+
+        packed
     }
 }

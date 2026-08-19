@@ -20,6 +20,10 @@ pub struct FastaRecord {
 }
 
 impl FastaRecord {
+
+    pub fn sequence(&self) -> &[u8] {
+        &self.sequence
+    }
     #[inline]
     pub fn len(&self) -> usize {
         self.sequence.len()

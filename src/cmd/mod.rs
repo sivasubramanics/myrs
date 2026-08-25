@@ -8,3 +8,4 @@ pub mod fqstats;
 pub mod dumpkmc;
 pub mod fakmercov;
 pub mod hicmatrix;
+pub mod farename;

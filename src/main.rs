@@ -48,6 +48,16 @@ fn run_app() -> Result<(), Box<dyn std::error::Error>> {
             cmd::fastats::run(&fname)?;
         }
 
+        cli::Commands::FaRename {
+            fname,
+            map_file,
+            output,
+            keep_old_id,
+            fold_width,
+        } => {
+            cmd::farename::run(&fname, &map_file, output, keep_old_id, fold_width)?;
+        }
+
         cli::Commands::FaFilter {
             fname,
             min_len,

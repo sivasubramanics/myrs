@@ -31,6 +31,30 @@ pub enum Commands {
         fname: String,
     },
 
+    /// Rename FASTA sequence records using a 2-column TSV mapping file
+    #[command(arg_required_else_help = true)]
+    FaRename {
+        /// Input FASTA file path
+        #[arg(short, long)]
+        fname: String,
+
+        /// 2-column TSV mapping file (old_name \t new_name)
+        #[arg(short = 'm', long = "map")]
+        map_file: String,
+
+        /// Output FASTA file path (default: <input>.renamed.fa)
+        #[arg(short = 'o', long = "out")]
+        output: Option<String>,
+
+        /// Keep the original sequence ID in the header description as old_id="<name>"
+        #[arg(long = "keep-old-id", default_value_t = false)]
+        keep_old_id: bool,
+
+        /// Line folding/wrapping width for sequence output
+        #[arg(short = 'w', long = "width")]
+        fold_width: Option<usize>,
+    },
+
     /// Filter FASTA records by sequence length and GC percentage
     #[command(arg_required_else_help = true)]
     FaFilter {

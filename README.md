@@ -16,6 +16,9 @@ cd myrs
 # Build optimized release binary
 cargo build --release
 
+# Check the executable works
+target/release/myrs --help
+
 # Optional: Add to PATH or copy to group binaries directory
 cp target/release/myrs ~/.local/bin/
 
@@ -276,16 +279,10 @@ myrs hic-contact-matrix -i aligned_hic.bam -b 10000 -t 4 -q 30 --max-nm 5 --min-
 
 * `--min-as <INT>`: Minimum allowed alignment score (`AS` tag, default: `100`).
 
-
-
 ---
 
-## Getting Help
+## GenAI Involvement
+This project was developed with the assistance of GenAI tools (Copilot), which helped only with drafting documentation and refactoring (along with cargo fmt). The final content has been reviewed and verified.
 
-To view all available commands or option flags for a specific subcommand:
-
-```bash
-myrs --help
-myrs <COMMAND> --help
-
-```
+## Contact
+For questions, issues, or feature requests, please open an issue on the [GitHub repository](https://github.com/sivasubramanics/svmarkers/issues).

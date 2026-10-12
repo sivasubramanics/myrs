@@ -1,0 +1,22 @@
+[package]
+name = "myrs"
+version = "0.0.1"
+authors = ["siva <c.s.sivasubramani@gmail.com>"]
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.6.4", features = ["derive"] }
+flate2 = { version = "1.1.9", default-features = false, features = ["zlib-ng"] }
+thiserror = "2.0.19"
+env_logger = "0.11.11"
+chrono = "0.4.45"
+log = "0.4.33"
+colored = "3.1.1"
+rayon = "1.12.0"
+crossbeam-channel = "0.5.16"
+memmap2 = "0.9.11"
+byteorder = "1.5.0"
+itoa = "1.0.18"
+fxhash = "0.2.1"
+noodles-bam = "0.94.0"
+noodles-sam = "0.89.0"

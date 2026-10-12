@@ -1,15 +1,15 @@
+use crate::data::bkmer::{BitPackedKmer128Iterator, PackedKmer128};
 use crate::data::fasta::{FastaReader, FastaRecord};
 use crate::data::kmc::Kmc;
 use crate::error::{AppError, Result};
 use crate::utils::helpers::{create_file, num_to_str};
-use crossbeam_channel::{bounded, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, bounded};
 use fxhash::FxHashSet;
 use log::info;
 use std::io::{self, BufWriter, Write};
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::thread;
-use crate::data::bkmer::{BitPackedKmer128Iterator, PackedKmer128};
 
 /// Result structure for a single processed FASTA sequence
 struct RecordKmerStats {
@@ -47,10 +47,8 @@ fn process_fasta_record(record: &FastaRecord, kmc: &Kmc, k: usize) -> RecordKmer
     let estimated_kmers = ref_len.saturating_sub(k - 1);
 
     // Hash set holding 256-bit bit-packed K-mers
-    let mut seen_kmers: FxHashSet<PackedKmer128> = FxHashSet::with_capacity_and_hasher(
-        estimated_kmers,
-        Default::default(),
-    );
+    let mut seen_kmers: FxHashSet<PackedKmer128> =
+        FxHashSet::with_capacity_and_hasher(estimated_kmers, Default::default());
 
     let mut query_total_n: u64 = 0;
     let mut query_uniq_n: usize = 0;
@@ -183,7 +181,7 @@ pub fn run(
         writer,
         "ref\tref_len\tref_unique_n\tref_total_n\tquery_uniq_n\tquery_total_n\tmean_ref\tmean_query"
     )
-        .map_err(AppError::Io)?;
+    .map_err(AppError::Io)?;
 
     let mut processed_records: usize = 0;
     let mut stderr = io::stderr();
@@ -201,21 +199,27 @@ pub fn run(
             stats.mean_ref,
             stats.mean_query
         )
-            .map_err(AppError::Io)?;
+        .map_err(AppError::Io)?;
 
         processed_records += 1;
 
         // Print in-place progress update on stderr
         // Update frequency can be throttled (e.g., `if processed_records % 100 == 0`) for high throughput
         if processed_records % 1000 == 0 {
-            eprint!("\rProcessed FASTA records: {}", num_to_str(processed_records as u64));
+            eprint!(
+                "\rProcessed FASTA records: {}",
+                num_to_str(processed_records as u64)
+            );
             let _ = stderr.flush();
         }
         let _ = stderr.flush();
     }
 
     // Clear the progress line after completion
-    eprintln!("\rProcessed FASTA records: {} (done)", num_to_str(processed_records as u64));
+    eprintln!(
+        "\rProcessed FASTA records: {} (done)",
+        num_to_str(processed_records as u64)
+    );
 
     // Ensure reader finished cleanly without I/O errors
     reader_handle.join().unwrap()?;
@@ -224,7 +228,10 @@ pub fn run(
     }
 
     writer.flush().map_err(AppError::Io)?;
-    info!("successfully calculated k-mer statistics for '{}'.", reference);
+    info!(
+        "successfully calculated k-mer statistics for '{}'.",
+        reference
+    );
 
     Ok(())
 }

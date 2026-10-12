@@ -1,14 +1,14 @@
+use crate::data::kmer::KmerIterator;
 use crate::error::{AppError, Result};
+use crate::utils::defaults::{COMPLEMENT, DEFAULT_BUF_SIZE, VALID_FASTA_EXTENSIONS};
 use crate::utils::helpers::{create_file, has_valid_extension, open_file, trim_ascii_whitespace};
-use crate::utils::defaults::{DEFAULT_BUF_SIZE, VALID_FASTA_EXTENSIONS, COMPLEMENT};
+use flate2::Compression;
 use flate2::bufread::MultiGzDecoder;
 use flate2::write::GzEncoder;
-use flate2::Compression;
 use log::{debug, info, trace}; // Added logging imports
 use std::fs::File;
-use std::io::{self, BufRead, BufReader, Read, Write, BufWriter};
+use std::io::{self, BufRead, BufReader, BufWriter, Read, Write};
 use std::path::Path;
-use crate::data::kmer::KmerIterator;
 
 /// Represents a FASTA record using raw byte vectors to avoid UTF-8 validation overhead.
 #[derive(Debug, Clone, Default)]
@@ -20,7 +20,6 @@ pub struct FastaRecord {
 }
 
 impl FastaRecord {
-
     pub fn sequence(&self) -> &[u8] {
         &self.sequence
     }
@@ -39,11 +38,16 @@ impl FastaRecord {
     pub fn num_atgc(&self) -> [usize; 5] {
         static LOOKUP: [u8; 256] = {
             let mut table = [255u8; 256];
-            table[b'A' as usize] = 0; table[b'a' as usize] = 0;
-            table[b'T' as usize] = 1; table[b't' as usize] = 1;
-            table[b'G' as usize] = 2; table[b'g' as usize] = 2;
-            table[b'C' as usize] = 3; table[b'c' as usize] = 3;
-            table[b'N' as usize] = 4; table[b'n' as usize] = 4;
+            table[b'A' as usize] = 0;
+            table[b'a' as usize] = 0;
+            table[b'T' as usize] = 1;
+            table[b't' as usize] = 1;
+            table[b'G' as usize] = 2;
+            table[b'g' as usize] = 2;
+            table[b'C' as usize] = 3;
+            table[b'c' as usize] = 3;
+            table[b'N' as usize] = 4;
+            table[b'n' as usize] = 4;
             table
         };
 
@@ -179,7 +183,10 @@ impl<R: BufRead> FastaReader<R> {
                 self.line_buf.clear();
                 let bytes_read = self.reader.read_until(b'\n', &mut self.line_buf)?;
                 if bytes_read == 0 {
-                    debug!("reached end of input stream after {} records.", self.current_id);
+                    debug!(
+                        "reached end of input stream after {} records.",
+                        self.current_id
+                    );
                     return Ok(false);
                 }
 
@@ -270,10 +277,10 @@ impl FastaWriter<Box<dyn Write>> {
             .unwrap_or(false);
 
         info!(
-        "created output FASTA file {:?} (gzipped: {})",
-        path_ref.display(),
-        is_gzipped
-    );
+            "created output FASTA file {:?} (gzipped: {})",
+            path_ref.display(),
+            is_gzipped
+        );
 
         let inner_buf = BufWriter::with_capacity(DEFAULT_BUF_SIZE, file);
 
@@ -295,7 +302,12 @@ impl<W: Write> FastaWriter<W> {
     }
 
     pub fn write_record(&mut self, record: &FastaRecord, fold: Option<usize>) -> io::Result<()> {
-        self.write_raw(&record.name, Some(&record.description), &record.sequence, fold)
+        self.write_raw(
+            &record.name,
+            Some(&record.description),
+            &record.sequence,
+            fold,
+        )
     }
 
     pub fn write_raw(

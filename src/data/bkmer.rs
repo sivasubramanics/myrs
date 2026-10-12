@@ -60,7 +60,11 @@ impl PackedKmer128 {
             self.data[0] = 0;
             self.data[1] = 0;
             self.data[2] = 0;
-            self.data[3] &= if total_bits == 64 { u64::MAX } else { (1u64 << total_bits) - 1 };
+            self.data[3] &= if total_bits == 64 {
+                u64::MAX
+            } else {
+                (1u64 << total_bits) - 1
+            };
         } else if total_bits <= 128 {
             self.data[0] = 0;
             self.data[1] = 0;

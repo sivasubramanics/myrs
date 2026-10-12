@@ -1,7 +1,7 @@
-use std::io::{BufWriter, Write};
-use log::info;
 use crate::data::fasta::{FastaReader, FastaRecord};
 use crate::utils::helpers::create_file;
+use log::info;
+use std::io::{BufWriter, Write};
 
 pub fn run(fname: &str) -> Result<(), Box<dyn std::error::Error>> {
     let mut reader = FastaReader::from_path(fname)?;

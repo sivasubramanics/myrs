@@ -33,19 +33,29 @@ pub const COMPLEMENT: [u8; 256] = {
     table[b'u' as usize] = b'a';
 
     // IUPAC Ambiguity Codes (Uppercase)
-    table[b'R' as usize] = b'Y'; table[b'Y' as usize] = b'R';
-    table[b'S' as usize] = b'S'; table[b'W' as usize] = b'W';
-    table[b'K' as usize] = b'M'; table[b'M' as usize] = b'K';
-    table[b'B' as usize] = b'V'; table[b'V' as usize] = b'B';
-    table[b'D' as usize] = b'H'; table[b'H' as usize] = b'D';
+    table[b'R' as usize] = b'Y';
+    table[b'Y' as usize] = b'R';
+    table[b'S' as usize] = b'S';
+    table[b'W' as usize] = b'W';
+    table[b'K' as usize] = b'M';
+    table[b'M' as usize] = b'K';
+    table[b'B' as usize] = b'V';
+    table[b'V' as usize] = b'B';
+    table[b'D' as usize] = b'H';
+    table[b'H' as usize] = b'D';
     table[b'N' as usize] = b'N';
 
     // IUPAC Ambiguity Codes (Lowercase)
-    table[b'r' as usize] = b'y'; table[b'y' as usize] = b'r';
-    table[b's' as usize] = b's'; table[b'w' as usize] = b'w';
-    table[b'k' as usize] = b'm'; table[b'm' as usize] = b'k';
-    table[b'b' as usize] = b'v'; table[b'v' as usize] = b'b';
-    table[b'd' as usize] = b'h'; table[b'h' as usize] = b'd';
+    table[b'r' as usize] = b'y';
+    table[b'y' as usize] = b'r';
+    table[b's' as usize] = b's';
+    table[b'w' as usize] = b'w';
+    table[b'k' as usize] = b'm';
+    table[b'm' as usize] = b'k';
+    table[b'b' as usize] = b'v';
+    table[b'v' as usize] = b'b';
+    table[b'd' as usize] = b'h';
+    table[b'h' as usize] = b'd';
     table[b'n' as usize] = b'n';
 
     table

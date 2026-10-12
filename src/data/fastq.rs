@@ -3,9 +3,9 @@ use crate::utils::defaults::COMPLEMENT;
 use crate::utils::defaults::{DEFAULT_BUF_SIZE, VALID_FASTQ_EXTENSIONS};
 use crate::utils::helpers::create_file;
 use crate::utils::helpers::{has_valid_extension, open_file, trim_ascii_whitespace};
+use flate2::Compression;
 use flate2::bufread::MultiGzDecoder;
 use flate2::write::GzEncoder;
-use flate2::Compression;
 use log::{debug, error, info, trace};
 use std::io::{self, BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
@@ -36,7 +36,11 @@ impl FastqRecord {
         if self.quality.is_empty() {
             return 0.0;
         }
-        let sum: usize = self.quality.iter().map(|&q| (q.saturating_sub(33)) as usize).sum();
+        let sum: usize = self
+            .quality
+            .iter()
+            .map(|&q| (q.saturating_sub(33)) as usize)
+            .sum();
         sum as f64 / self.quality.len() as f64
     }
 
@@ -95,7 +99,11 @@ impl FastqReader<Box<dyn BufRead>> {
             .map(|ext| ext.eq_ignore_ascii_case("gz"))
             .unwrap_or(false);
 
-        info!("reading fastq file {:?} (gzipped: {})", path_ref.display(), is_gzipped);
+        info!(
+            "reading fastq file {:?} (gzipped: {})",
+            path_ref.display(),
+            is_gzipped
+        );
 
         let reader: Box<dyn BufRead> = if is_gzipped {
             let file_buf = BufReader::with_capacity(DEFAULT_BUF_SIZE, file);
@@ -124,7 +132,10 @@ impl<R: BufRead> FastqReader<R> {
         self.line_buf.clear();
         let bytes_read = self.reader.read_until(b'\n', &mut self.line_buf)?;
         if bytes_read == 0 {
-            debug!("reached end of FASTQ stream after {} records.", self.current_id);
+            debug!(
+                "reached end of FASTQ stream after {} records.",
+                self.current_id
+            );
             return Ok(false);
         }
 
@@ -132,7 +143,10 @@ impl<R: BufRead> FastqReader<R> {
         if !trimmed_header.starts_with(b"@") {
             return Err(io::Error::new(
                 io::ErrorKind::InvalidData,
-                format!("corrupted FASTQ record {}: missing '@' prefix", self.current_id),
+                format!(
+                    "corrupted FASTQ record {}: missing '@' prefix",
+                    self.current_id
+                ),
             ));
         }
 
@@ -156,7 +170,9 @@ impl<R: BufRead> FastqReader<R> {
             ));
         }
         record.sequence.clear();
-        record.sequence.extend_from_slice(trim_ascii_whitespace(&self.line_buf));
+        record
+            .sequence
+            .extend_from_slice(trim_ascii_whitespace(&self.line_buf));
 
         // Line 3: Separator (+)
         self.line_buf.clear();
@@ -176,7 +192,9 @@ impl<R: BufRead> FastqReader<R> {
             ));
         }
         record.quality.clear();
-        record.quality.extend_from_slice(trim_ascii_whitespace(&self.line_buf));
+        record
+            .quality
+            .extend_from_slice(trim_ascii_whitespace(&self.line_buf));
 
         if record.sequence.len() != record.quality.len() {
             return Err(io::Error::new(
@@ -190,7 +208,12 @@ impl<R: BufRead> FastqReader<R> {
             ));
         }
 
-        trace!("parsed FASTQ record ID {}: name='{}', len={} bp", record.id, record.name, record.len());
+        trace!(
+            "parsed FASTQ record ID {}: name='{}', len={} bp",
+            record.id,
+            record.name,
+            record.len()
+        );
 
         self.current_id += 1;
         Ok(true)
@@ -220,13 +243,20 @@ impl PairedFastqReader<Box<dyn BufRead>, Box<dyn BufRead>> {
     pub fn from_paths<P: AsRef<Path>>(r1_path: P, r2_path: P) -> Result<Self> {
         let r1_reader = FastqReader::from_path(r1_path)?;
         let r2_reader = FastqReader::from_path(r2_path)?;
-        Ok(Self { r1_reader, r2_reader })
+        Ok(Self {
+            r1_reader,
+            r2_reader,
+        })
     }
 }
 
 impl<R1: BufRead, R2: BufRead> PairedFastqReader<R1, R2> {
     /// Zero-allocation paired streaming into pre-allocated `FastqRecord` target structs.
-    pub fn read_next(&mut self, rec1: &mut FastqRecord, rec2: &mut FastqRecord) -> io::Result<bool> {
+    pub fn read_next(
+        &mut self,
+        rec1: &mut FastqRecord,
+        rec2: &mut FastqRecord,
+    ) -> io::Result<bool> {
         let has_r1 = self.r1_reader.read_next(rec1)?;
         let has_r2 = self.r2_reader.read_next(rec2)?;
 
@@ -275,7 +305,11 @@ impl FastqWriter<Box<dyn Write>> {
             .map(|ext| ext.eq_ignore_ascii_case("gz"))
             .unwrap_or(false);
 
-        info!("created output FASTQ file {:?} (gzipped: {})", path_ref.display(), is_gzipped);
+        info!(
+            "created output FASTQ file {:?} (gzipped: {})",
+            path_ref.display(),
+            is_gzipped
+        );
 
         let inner_buf = BufWriter::with_capacity(DEFAULT_BUF_SIZE, file);
 

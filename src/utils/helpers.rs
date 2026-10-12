@@ -1,7 +1,7 @@
-use std::fs::File;
-use std::path::Path;
 use crate::data::fasta::FastaRecord;
 use crate::error::{AppError, Result};
+use std::fs::File;
+use std::path::Path;
 
 /// Trims leading and trailing ASCII whitespace from a byte slice in-place without allocation.
 #[inline]
@@ -46,7 +46,11 @@ pub fn append_suffix_to_path<P: AsRef<Path>>(input_path: P, suffix: &str) -> Str
 ///
 /// Accepts a path and a list of valid extensions (e.g. `["fasta", "fa", "fna"]`).
 /// Handles lowercase/uppercase matching and compressed variants like `.fasta.gz`.
-pub fn has_valid_extension<P: AsRef<Path>>(path: P, valid_extensions: &[&str], allow_compressed: bool) -> bool {
+pub fn has_valid_extension<P: AsRef<Path>>(
+    path: P,
+    valid_extensions: &[&str],
+    allow_compressed: bool,
+) -> bool {
     let path = path.as_ref();
 
     // Get the outer extension (e.g., "gz" or "fasta")
@@ -67,7 +71,9 @@ pub fn has_valid_extension<P: AsRef<Path>>(path: P, valid_extensions: &[&str], a
             .map(|e| valid_extensions.iter().any(|v| v.eq_ignore_ascii_case(e)))
             .unwrap_or(false)
     } else {
-        valid_extensions.iter().any(|v| v.eq_ignore_ascii_case(&ext))
+        valid_extensions
+            .iter()
+            .any(|v| v.eq_ignore_ascii_case(&ext))
     }
 }
 
@@ -148,7 +154,12 @@ pub fn is_compressed<P: AsRef<Path>>(path: P) -> bool {
     path.as_ref()
         .extension()
         .and_then(|ext| ext.to_str())
-        .map(|ext| matches!(ext.to_lowercase().as_str(), "gz" | "bgz" | "bz2" | "xz" | "zst"))
+        .map(|ext| {
+            matches!(
+                ext.to_lowercase().as_str(),
+                "gz" | "bgz" | "bz2" | "xz" | "zst"
+            )
+        })
         .unwrap_or(false)
 }
 

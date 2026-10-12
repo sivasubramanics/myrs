@@ -1,3 +1,4 @@
+use crate::data::bkmer::PackedKmer128;
 use crate::error::{AppError, Result};
 use crate::utils::helpers::open_file;
 use byteorder::{ByteOrder, LittleEndian};
@@ -6,8 +7,7 @@ use memmap2::Mmap;
 use std::borrow::Cow;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom, Write};
-use std::path::{Path, PathBuf};
-use crate::data::bkmer::PackedKmer128; // Updated import for 128-bit packed K-mers
+use std::path::{Path, PathBuf}; // Updated import for 128-bit packed K-mers
 
 const MAX_BYTE_COUNT: usize = 1 << 24; // 16 MB chunking page size
 
@@ -60,18 +60,32 @@ impl SignatureMap {
     }
 
     fn is_allowed(mut signature: u32, sign_length: usize) -> bool {
-        if (signature & 0x3F) == 0x3F { return false; } // TTT suffix
-        if (signature & 0x3F) == 0x3B { return false; } // TGT suffix
-        if (signature & 0x3C) == 0x3C { return false; } // TG* suffix
+        if (signature & 0x3F) == 0x3F {
+            return false;
+        } // TTT suffix
+        if (signature & 0x3F) == 0x3B {
+            return false;
+        } // TGT suffix
+        if (signature & 0x3C) == 0x3C {
+            return false;
+        } // TG* suffix
 
         for _ in 0..(sign_length.saturating_sub(3)) {
-            if (signature & 0xF) == 0 { return false; } // AA inside
+            if (signature & 0xF) == 0 {
+                return false;
+            } // AA inside
             signature >>= 2;
         }
 
-        if signature == 0 { return false; }     // AAA prefix
-        if signature == 0x04 { return false; }  // ACA prefix
-        if (signature & 0xF) == 0 { return false; } // *AA prefix
+        if signature == 0 {
+            return false;
+        } // AAA prefix
+        if signature == 0x04 {
+            return false;
+        } // ACA prefix
+        if (signature & 0xF) == 0 {
+            return false;
+        } // *AA prefix
 
         true
     }
@@ -180,7 +194,7 @@ impl Kmc {
         let both_strands = mmap[pos] == 0;
         pos += 1;
 
-        pos += 3;  // skip uchar[3] padding
+        pos += 3; // skip uchar[3] padding
         pos += 24; // skip uint32[6] padding
 
         let version = LittleEndian::read_u32(&mmap[pos..pos + 4]);
@@ -238,13 +252,20 @@ impl Kmc {
     }
 
     fn read_suffix_buffers(&mut self) -> Result<()> {
-        info!("memory mapping KMC suffix file {:?}", self.kmc_suffix_file.display());
+        info!(
+            "memory mapping KMC suffix file {:?}",
+            self.kmc_suffix_file.display()
+        );
         let file = open_file(&self.kmc_suffix_file)?;
 
         let full_page_size = (MAX_BYTE_COUNT / self.record_size) * self.record_size;
         let total_bytes = self.total_kmers * self.record_size as u64;
         let number_of_pages = (total_bytes / full_page_size as u64
-            + if total_bytes % full_page_size as u64 == 0 { 0 } else { 1 }) as usize;
+            + if total_bytes % full_page_size as u64 == 0 {
+                0
+            } else {
+                1
+            }) as usize;
 
         let mut maps = Vec::with_capacity(number_of_pages);
         for i in 0..number_of_pages {
@@ -271,13 +292,20 @@ impl Kmc {
     }
 
     fn preload_suffix_buffers(&mut self) -> Result<()> {
-        info!("loading KMC suffix file {:?} into memory", self.kmc_suffix_file.display());
+        info!(
+            "loading KMC suffix file {:?} into memory",
+            self.kmc_suffix_file.display()
+        );
         let mut file = File::open(&self.kmc_suffix_file).map_err(AppError::Io)?;
 
         let full_page_size = (MAX_BYTE_COUNT / self.record_size) * self.record_size;
         let total_bytes = self.total_kmers * self.record_size as u64;
         let number_of_pages = (total_bytes / full_page_size as u64
-            + if total_bytes % full_page_size as u64 == 0 { 0 } else { 1 }) as usize;
+            + if total_bytes % full_page_size as u64 == 0 {
+                0
+            } else {
+                1
+            }) as usize;
 
         file.seek(SeekFrom::Start(4)).map_err(AppError::Io)?;
 
@@ -448,7 +476,7 @@ impl Kmc {
                 // Fast 4-bases-per-byte unpacking loop
                 let mut out_pos = self.lut_prefix_length;
                 for &byte in suffix_bytes {
-                    line_buf[out_pos]     = LOOKUP[((byte >> 6) & 0x03) as usize];
+                    line_buf[out_pos] = LOOKUP[((byte >> 6) & 0x03) as usize];
                     line_buf[out_pos + 1] = LOOKUP[((byte >> 4) & 0x03) as usize];
                     line_buf[out_pos + 2] = LOOKUP[((byte >> 2) & 0x03) as usize];
                     line_buf[out_pos + 3] = LOOKUP[(byte & 0x03) as usize];
@@ -456,9 +484,13 @@ impl Kmc {
                 }
 
                 // Batch I/O writes into a single contiguous write_all block
-                writer.write_all(&line_buf[..full_kmer_len]).map_err(AppError::Io)?;
+                writer
+                    .write_all(&line_buf[..full_kmer_len])
+                    .map_err(AppError::Io)?;
                 writer.write_all(b"\t").map_err(AppError::Io)?;
-                writer.write_all(itoa_buf.format(count).as_bytes()).map_err(AppError::Io)?;
+                writer
+                    .write_all(itoa_buf.format(count).as_bytes())
+                    .map_err(AppError::Io)?;
                 writer.write_all(b"\n").map_err(AppError::Io)?;
             }
         }
@@ -634,7 +666,11 @@ impl KmerRef for PackedKmer128 {
         let word_idx = 3 - (bit_pos / 64);
         let shift = bit_pos % 64;
 
-        let mask = if prefix_len >= 32 { u64::MAX } else { (1u64 << (prefix_len * 2)) - 1 };
+        let mask = if prefix_len >= 32 {
+            u64::MAX
+        } else {
+            (1u64 << (prefix_len * 2)) - 1
+        };
 
         let prefix_bits = if shift + (prefix_len * 2) <= 64 {
             (self.data()[word_idx] >> shift) & mask

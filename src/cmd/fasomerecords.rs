@@ -20,7 +20,9 @@ pub fn run(
 ) -> Result<()> {
     let targets = load_target_names(names_file, names_list)?;
     if targets.is_empty() {
-        return Err(AppError::InvalidInput("no sequence names provided to extract".into()));
+        return Err(AppError::InvalidInput(
+            "no sequence names provided to extract".into(),
+        ));
     }
 
     let fasta_path = Path::new(fname);
@@ -41,11 +43,17 @@ pub fn run(
         extract_sequential(fasta_path, &targets, &mut writer, fold_width)?;
     } else {
         if !fai_path.exists() {
-            info!("index file {:?} not found. Generating .faidx index...", fai_path);
+            info!(
+                "index file {:?} not found. Generating .faidx index...",
+                fai_path
+            );
             fafai::run(fname)?;
         }
 
-        info!("extracting {} records via faidx random access...", targets.len());
+        info!(
+            "extracting {} records via faidx random access...",
+            targets.len()
+        );
         extract_indexed(&fai_path, fasta_path, &targets, &mut writer, fold_width)?;
     }
 
@@ -77,7 +85,11 @@ fn extract_indexed(
         }
     }
 
-    info!("extracted {}/{} requested records", found_count, targets.len());
+    info!(
+        "extracted {}/{} requested records",
+        found_count,
+        targets.len()
+    );
     Ok(())
 }
 
@@ -117,7 +129,11 @@ fn extract_sequential(
         }
     }
 
-    info!("extracted {}/{} requested records", found_count, targets.len());
+    info!(
+        "extracted {}/{} requested records",
+        found_count,
+        targets.len()
+    );
     Ok(())
 }
 

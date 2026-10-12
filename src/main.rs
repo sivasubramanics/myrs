@@ -5,9 +5,9 @@ mod error;
 mod logger;
 mod utils;
 
-use clap::Parser;
 use crate::logger::init_logger;
 use crate::utils::helpers::format_time;
+use clap::Parser;
 use log::info;
 use std::process;
 use std::time::Instant;

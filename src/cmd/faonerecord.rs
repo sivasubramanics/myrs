@@ -1,11 +1,11 @@
-use crate::data::fasta::FastaWriter;
+use crate::cmd::fafai;
 use crate::data::faidx::FaidxIndex;
+use crate::data::fasta::FastaWriter;
 use crate::error::{AppError, Result};
+use crate::utils::VALID_FASTA_EXTENSIONS;
+use crate::utils::helpers::has_valid_extension;
 use log::{error, info};
 use std::path::{Path, PathBuf};
-use crate::cmd::fafai;
-use crate::utils::helpers::has_valid_extension;
-use crate::utils::VALID_FASTA_EXTENSIONS;
 
 pub fn run(
     fname: &str,
@@ -16,14 +16,20 @@ pub fn run(
     let fasta_path = Path::new(fname);
 
     if !has_valid_extension(fname, VALID_FASTA_EXTENSIONS, false) {
-       error!("input file '{}' does not have a valid FASTA extension. Supported extensions: .fasta, .fa, .fna, .faa, .ffn, .frn (not compressed)", fname);
-       return Err(AppError::InvalidInput("invalid file extension".into()));
+        error!(
+            "input file '{}' does not have a valid FASTA extension. Supported extensions: .fasta, .fa, .fna, .faa, .ffn, .frn (not compressed)",
+            fname
+        );
+        return Err(AppError::InvalidInput("invalid file extension".into()));
     }
 
     let fai_path = PathBuf::from(format!("{}.faidx", fname));
 
     if !fai_path.exists() {
-        info!("index file {:?} not found. Generating .faidx index...", fai_path);
+        info!(
+            "index file {:?} not found. Generating .faidx index...",
+            fai_path
+        );
         fafai::run(fname)?;
     }
 

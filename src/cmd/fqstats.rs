@@ -1,24 +1,28 @@
 use crate::data::fastq::{FastqReader, FastqRecord};
 use crate::error::{AppError, Result};
+use crate::utils::DEFAULT_COLUMN_WIDTH;
 use crate::utils::helpers::{create_file, num_to_str};
+use crossbeam_channel::{Receiver, Sender, bounded};
 use log::{debug, info, warn};
 use rayon::prelude::*;
 use std::io::{BufWriter, Write};
-use crate::utils::DEFAULT_COLUMN_WIDTH;
-use crossbeam_channel::{bounded, Receiver, Sender};
 use std::thread;
-
 
 const PHRED_OFFSET: u8 = 33;
 const CHUNK_SIZE: usize = 10_000;
 
 const BASE_LUT: [u8; 256] = {
     let mut lut = [255u8; 256];
-    lut[b'A' as usize] = 0; lut[b'a' as usize] = 0;
-    lut[b'T' as usize] = 1; lut[b't' as usize] = 1;
-    lut[b'G' as usize] = 2; lut[b'g' as usize] = 2;
-    lut[b'C' as usize] = 3; lut[b'c' as usize] = 3;
-    lut[b'N' as usize] = 4; lut[b'n' as usize] = 4;
+    lut[b'A' as usize] = 0;
+    lut[b'a' as usize] = 0;
+    lut[b'T' as usize] = 1;
+    lut[b't' as usize] = 1;
+    lut[b'G' as usize] = 2;
+    lut[b'g' as usize] = 2;
+    lut[b'C' as usize] = 3;
+    lut[b'c' as usize] = 3;
+    lut[b'N' as usize] = 4;
+    lut[b'n' as usize] = 4;
     lut
 };
 
@@ -77,15 +81,18 @@ impl ChunkStats {
     }
 }
 
-
 pub fn run(fname: &str, nthreads: usize) -> Result<()> {
-    info!("starting summary on file: {} (threads: {})", fname, nthreads);
+    info!(
+        "starting summary on file: {} (threads: {})",
+        fname, nthreads
+    );
 
     // Dedicate 1 thread for I/O reading, remainder for worker processing
     let worker_threads = if nthreads > 1 { nthreads - 1 } else { 1 };
 
     // Bounded channels prevent reading the entire file into RAM if workers lag
-    let (tx_chunks, rx_chunks): (Sender<Vec<FastqRecord>>, Receiver<Vec<FastqRecord>>) = bounded(100);
+    let (tx_chunks, rx_chunks): (Sender<Vec<FastqRecord>>, Receiver<Vec<FastqRecord>>) =
+        bounded(100);
     let (tx_stats, rx_stats): (Sender<ChunkStats>, Receiver<ChunkStats>) = bounded(100);
 
     // -------------------------------------------------------------
@@ -192,8 +199,12 @@ fn process_single_record(rec: &FastqRecord, stats: &mut ChunkStats) {
     for &q in &rec.quality {
         stats.min_qual_char = stats.min_qual_char.min(q);
         stats.max_qual_char = stats.max_qual_char.max(q);
-        if q >= q20_threshold { stats.bases_ge_q20 += 1; }
-        if q >= q30_threshold { stats.bases_ge_q30 += 1; }
+        if q >= q20_threshold {
+            stats.bases_ge_q20 += 1;
+        }
+        if q >= q30_threshold {
+            stats.bases_ge_q30 += 1;
+        }
     }
 }
 
@@ -295,9 +306,18 @@ impl<'a> CalculatedSummary<'a> {
             ("% bases >=Q20", format!("{:.3}", self.pct_q20)),
             ("% bases >=Q30", format!("{:.3}", self.pct_q30)),
             ("Average read length", format!("{:.3}", self.avg_len)),
-            ("Read length range", format!("{} .. {}", self.min_len, self.max_len)),
-            ("Quality range", format!("{} .. {}", self.min_qual, self.max_qual)),
-            ("Phred range", format!("{} .. {}", self.min_phred, self.max_phred)),
+            (
+                "Read length range",
+                format!("{} .. {}", self.min_len, self.max_len),
+            ),
+            (
+                "Quality range",
+                format!("{} .. {}", self.min_qual, self.max_qual),
+            ),
+            (
+                "Phred range",
+                format!("{} .. {}", self.min_phred, self.max_phred),
+            ),
             ("Offset", PHRED_OFFSET.to_string()),
             ("A", num_to_str(self.count_a as u64)),
             ("T", num_to_str(self.count_t as u64)),

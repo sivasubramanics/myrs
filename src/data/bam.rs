@@ -1,9 +1,9 @@
 use crate::error::{AppError, Result};
 use crate::utils::defaults::{DEFAULT_BUF_SIZE, DEFAULT_COLUMN_WIDTH};
 use crate::utils::helpers::{create_file, num_to_str, open_file};
+use flate2::Compression;
 use flate2::bufread::MultiGzDecoder;
 use flate2::write::GzEncoder;
-use flate2::Compression;
 use log::{debug, error, info, trace};
 use std::io::{self, BufReader, BufWriter, Read, Write};
 use std::path::Path;
@@ -162,7 +162,8 @@ impl NativeBamReader<Box<dyn Read>> {
 
         let file_buf = BufReader::with_capacity(DEFAULT_BUF_SIZE, file);
         let gz_decoder = MultiGzDecoder::new(file_buf);
-        let reader: Box<dyn Read> = Box::new(BufReader::with_capacity(DEFAULT_BUF_SIZE, gz_decoder));
+        let reader: Box<dyn Read> =
+            Box::new(BufReader::with_capacity(DEFAULT_BUF_SIZE, gz_decoder));
 
         Self::new(reader).map_err(Into::into)
     }
@@ -226,7 +227,10 @@ impl<R: Read> NativeBamReader<R> {
         match self.reader.read_exact(&mut block_size_bytes) {
             Ok(_) => {}
             Err(ref e) if e.kind() == io::ErrorKind::UnexpectedEof => {
-                debug!("reached end of BAM stream after {} records.", self.current_id);
+                debug!(
+                    "reached end of BAM stream after {} records.",
+                    self.current_id
+                );
                 return Ok(false);
             }
             Err(e) => return Err(e),
@@ -264,7 +268,10 @@ impl<R: Read> NativeBamReader<R> {
 
         // 1. Read Name (null-terminated string)
         if offset + l_read_name > block_size {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid read name length"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "invalid read name length",
+            ));
         }
         let name_bytes = &block[offset..offset + l_read_name.saturating_sub(1)];
         record.name = String::from_utf8_lossy(name_bytes).into_owned();
@@ -276,7 +283,10 @@ impl<R: Read> NativeBamReader<R> {
         // 3. Decode 4-bit compressed nucleotide Sequence
         let seq_bytes_len = (l_seq + 1) / 2;
         if offset + seq_bytes_len > block_size {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid sequence length"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "invalid sequence length",
+            ));
         }
 
         record.sequence.clear();
@@ -293,10 +303,15 @@ impl<R: Read> NativeBamReader<R> {
 
         // 4. Quality Scores
         if offset + l_seq > block_size {
-            return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid quality length"));
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "invalid quality length",
+            ));
         }
         record.quality.clear();
-        record.quality.extend_from_slice(&block[offset..offset + l_seq]);
+        record
+            .quality
+            .extend_from_slice(&block[offset..offset + l_seq]);
         offset += l_seq;
 
         // 5. Parse Auxiliary Tags (Extract NM, AS if available)
@@ -310,48 +325,67 @@ impl<R: Read> NativeBamReader<R> {
 
             let val = match val_type {
                 b'c' => {
-                    if offset + 1 > block_size { break; }
+                    if offset + 1 > block_size {
+                        break;
+                    }
                     let v = block[offset] as i8 as i32;
                     offset += 1;
                     Some(v)
                 }
                 b'C' => {
-                    if offset + 1 > block_size { break; }
+                    if offset + 1 > block_size {
+                        break;
+                    }
                     let v = block[offset] as u8 as i32;
                     offset += 1;
                     Some(v)
                 }
                 b's' => {
-                    if offset + 2 > block_size { break; }
-                    let v = i16::from_le_bytes(block[offset..offset + 2].try_into().unwrap()) as i32;
+                    if offset + 2 > block_size {
+                        break;
+                    }
+                    let v =
+                        i16::from_le_bytes(block[offset..offset + 2].try_into().unwrap()) as i32;
                     offset += 2;
                     Some(v)
                 }
                 b'S' => {
-                    if offset + 2 > block_size { break; }
-                    let v = u16::from_le_bytes(block[offset..offset + 2].try_into().unwrap()) as i32;
+                    if offset + 2 > block_size {
+                        break;
+                    }
+                    let v =
+                        u16::from_le_bytes(block[offset..offset + 2].try_into().unwrap()) as i32;
                     offset += 2;
                     Some(v)
                 }
                 b'i' => {
-                    if offset + 4 > block_size { break; }
+                    if offset + 4 > block_size {
+                        break;
+                    }
                     let v = i32::from_le_bytes(block[offset..offset + 4].try_into().unwrap());
                     offset += 4;
                     Some(v)
                 }
                 b'I' => {
-                    if offset + 4 > block_size { break; }
-                    let v = u32::from_le_bytes(block[offset..offset + 4].try_into().unwrap()) as i32;
+                    if offset + 4 > block_size {
+                        break;
+                    }
+                    let v =
+                        u32::from_le_bytes(block[offset..offset + 4].try_into().unwrap()) as i32;
                     offset += 4;
                     Some(v)
                 }
                 b'f' => {
-                    if offset + 4 > block_size { break; }
+                    if offset + 4 > block_size {
+                        break;
+                    }
                     offset += 4;
                     None
                 }
                 b'A' => {
-                    if offset + 1 > block_size { break; }
+                    if offset + 1 > block_size {
+                        break;
+                    }
                     offset += 1;
                     None
                 }
@@ -365,9 +399,13 @@ impl<R: Read> NativeBamReader<R> {
                     None
                 }
                 b'B' => {
-                    if offset + 5 > block_size { break; }
+                    if offset + 5 > block_size {
+                        break;
+                    }
                     let elem_type = block[offset];
-                    let count = u32::from_le_bytes(block[offset + 1..offset + 5].try_into().unwrap()) as usize;
+                    let count =
+                        u32::from_le_bytes(block[offset + 1..offset + 5].try_into().unwrap())
+                            as usize;
                     offset += 5;
                     let elem_size = match elem_type {
                         b'c' | b'C' => 1,
@@ -391,7 +429,12 @@ impl<R: Read> NativeBamReader<R> {
         record.id = self.current_id;
         self.current_id += 1;
 
-        trace!("parsed BAM record ID {}: name='{}', len={} bp", record.id, record.name, record.len());
+        trace!(
+            "parsed BAM record ID {}: name='{}', len={} bp",
+            record.id,
+            record.name,
+            record.len()
+        );
         Ok(true)
     }
 }
@@ -497,7 +540,11 @@ impl BamFlagStats {
             ("Duplicate reads", num_to_str(self.duplicates)),
             (
                 "Mapped reads",
-                format!("{} ({})", num_to_str(self.mapped), pct(self.mapped, self.total)),
+                format!(
+                    "{} ({})",
+                    num_to_str(self.mapped),
+                    pct(self.mapped, self.total)
+                ),
             ),
             ("Paired in sequencing", num_to_str(self.paired_in_seq)),
             ("Read 1 count", num_to_str(self.read1)),

@@ -1,5 +1,5 @@
-use env_logger::{Builder, Env};
 use colored::Colorize;
+use env_logger::{Builder, Env};
 use std::io::Write;
 
 pub fn init_logger() {
@@ -17,13 +17,20 @@ pub fn init_logger() {
 
             let level = match record.level() {
                 log::Level::Error => "ERROR  ".truecolor(243, 139, 168),
-                log::Level::Warn  => "WARNING".truecolor(255, 165, 0),
-                log::Level::Info  => "INFO   ".truecolor(166, 227, 161),
+                log::Level::Warn => "WARNING".truecolor(255, 165, 0),
+                log::Level::Info => "INFO   ".truecolor(166, 227, 161),
                 log::Level::Debug => "DEBUG  ".truecolor(52, 152, 219),
                 log::Level::Trace => "TRACE  ".truecolor(155, 89, 182),
             };
 
-            writeln!(buf, "[{}] - {} - {:<25} - {}", now, level, target, record.args())
+            writeln!(
+                buf,
+                "[{}] - {} - {:<25} - {}",
+                now,
+                level,
+                target,
+                record.args()
+            )
         })
         .init();
 }

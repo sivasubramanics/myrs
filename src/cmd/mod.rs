@@ -1,11 +1,11 @@
-pub mod falength;
-pub mod fastats;
-pub mod fafilter;
+pub mod dumpkmc;
 pub mod fafai;
+pub mod fafilter;
+pub mod fakmercov;
+pub mod falength;
 pub mod faonerecord;
 pub mod fasomerecords;
+pub mod fastats;
 pub mod fqstats;
-pub mod dumpkmc;
-pub mod fakmercov;
 pub mod hicmatrix;
 pub mod farename;

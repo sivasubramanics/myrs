@@ -1,15 +1,18 @@
 use crate::error::{AppError, Result};
+use crate::utils::VALID_FASTA_EXTENSIONS;
+use crate::utils::helpers::{create_file, has_valid_extension, open_file};
 use log::{error, info, warn};
 use std::io::{BufRead, BufReader, BufWriter, Write};
 use std::path::Path;
-use crate::utils::helpers::{create_file, open_file, has_valid_extension};
-use crate::utils::VALID_FASTA_EXTENSIONS;
 
 pub fn run(fname: &str) -> Result<()> {
     info!("creating faidx file '{}'", fname);
 
     if !has_valid_extension(fname, VALID_FASTA_EXTENSIONS, false) {
-        error!("input file '{}' does not have a valid FASTA extension. Supported extensions: .fasta, .fa, .fna, .faa, .ffn, .frn (not compressed)", fname);
+        error!(
+            "input file '{}' does not have a valid FASTA extension. Supported extensions: .fasta, .fa, .fna, .faa, .ffn, .frn (not compressed)",
+            fname
+        );
         return Err(AppError::InvalidInput("invalid file extension".into()));
     }
 
@@ -33,10 +36,12 @@ pub fn run(fname: &str) -> Result<()> {
 
     loop {
         line_buf.clear();
-        let bytes_read = reader.read_until(b'\n', &mut line_buf).map_err(|e| AppError::FileIo {
-            path: Path::new(fname).to_path_buf(),
-            source: e,
-        })?;
+        let bytes_read = reader
+            .read_until(b'\n', &mut line_buf)
+            .map_err(|e| AppError::FileIo {
+                path: Path::new(fname).to_path_buf(),
+                source: e,
+            })?;
 
         if bytes_read == 0 {
             // End of file — flush the last sequence
@@ -70,7 +75,9 @@ pub fn run(fname: &str) -> Result<()> {
                 )?;
             }
 
-            let header_str = String::from_utf8_lossy(&line_buf[1..]).trim_end().to_string();
+            let header_str = String::from_utf8_lossy(&line_buf[1..])
+                .trim_end()
+                .to_string();
             let mut parts = header_str.splitn(2, |c: char| c.is_whitespace());
 
             seq_name = parts.next().map(|s| s.to_string());

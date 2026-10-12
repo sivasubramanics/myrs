@@ -2,7 +2,7 @@ use crate::data::bam::{BamFlagStats, BamRecord, NativeBamReader};
 use crate::error::{AppError, Result};
 use crate::utils::defaults::DEFAULT_COLUMN_WIDTH;
 use crate::utils::helpers::{create_file, num_to_str};
-use crossbeam_channel::{bounded, Receiver, Sender};
+use crossbeam_channel::{Receiver, Sender, bounded};
 use log::{info, warn};
 use std::collections::HashMap;
 use std::io::{BufWriter, Write};
@@ -272,7 +272,8 @@ pub fn run(
     // -------------------------------------------------------------
     flag_stats.log_summary();
 
-    let summary = CalculatedMatrixSummary::from_stats(input_path, bin_size, &filters, &combined_stats);
+    let summary =
+        CalculatedMatrixSummary::from_stats(input_path, bin_size, &filters, &combined_stats);
     summary.log_summary();
     summary.write_tsv(&combined_stats.bin_counts)?;
 
@@ -326,7 +327,10 @@ impl<'a> CalculatedMatrixSummary<'a> {
                 (stats.inter_pairs as f64 * 100.0) / total_pairs as f64,
             )
         } else {
-            warn!("input BAM file '{}' contained 0 valid interaction pairs.", fname);
+            warn!(
+                "input BAM file '{}' contained 0 valid interaction pairs.",
+                fname
+            );
             (0.0, 0.0)
         };
 
@@ -350,22 +354,37 @@ impl<'a> CalculatedMatrixSummary<'a> {
             ("Min MAPQ threshold", self.filters.min_mapq.to_string()),
             (
                 "Max NM threshold",
-                self.filters.max_nm.map_or_else(|| "None".to_string(), |v| v.to_string()),
+                self.filters
+                    .max_nm
+                    .map_or_else(|| "None".to_string(), |v| v.to_string()),
             ),
             (
                 "Min AS threshold",
-                self.filters.min_as.map_or_else(|| "None".to_string(), |v| v.to_string()),
+                self.filters
+                    .min_as
+                    .map_or_else(|| "None".to_string(), |v| v.to_string()),
             ),
             ("Total read pairs", num_to_str(self.total_pairs as u64)),
             (
                 "Intra-chromosomal pairs",
-                format!("{} ({:.2}%)", num_to_str(self.intra_pairs as u64), self.intra_pct),
+                format!(
+                    "{} ({:.2}%)",
+                    num_to_str(self.intra_pairs as u64),
+                    self.intra_pct
+                ),
             ),
             (
                 "Inter-chromosomal pairs",
-                format!("{} ({:.2}%)", num_to_str(self.inter_pairs as u64), self.inter_pct),
+                format!(
+                    "{} ({:.2}%)",
+                    num_to_str(self.inter_pairs as u64),
+                    self.inter_pct
+                ),
             ),
-            ("Populated matrix bins", num_to_str(self.populated_bins as u64)),
+            (
+                "Populated matrix bins",
+                num_to_str(self.populated_bins as u64),
+            ),
         ]
     }
 

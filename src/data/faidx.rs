@@ -22,7 +22,10 @@ pub struct FaidxIndex {
 
 impl FaidxIndex {
     /// Load `.faidx` index file into memory and associate it with its source FASTA file.
-    pub fn from_path<P1: AsRef<Path>, P2: AsRef<Path>>(fai_path: P1, fasta_path: P2) -> Result<Self> {
+    pub fn from_path<P1: AsRef<Path>, P2: AsRef<Path>>(
+        fai_path: P1,
+        fasta_path: P2,
+    ) -> Result<Self> {
         let file = File::open(fai_path.as_ref())?;
         let reader = BufReader::new(file);
         let mut records = HashMap::new();
@@ -46,10 +49,18 @@ impl FaidxIndex {
 
             let record = FaidxRecord {
                 name: parts[0].to_string(),
-                length: parts[1].parse().map_err(|_| AppError::InvalidInput("invalid length".into()))?,
-                offset: parts[2].parse().map_err(|_| AppError::InvalidInput("invalid offset".into()))?,
-                line_bases: parts[3].parse().map_err(|_| AppError::InvalidInput("invalid line_bases".into()))?,
-                line_width: parts[4].parse().map_err(|_| AppError::InvalidInput("invalid line_width".into()))?,
+                length: parts[1]
+                    .parse()
+                    .map_err(|_| AppError::InvalidInput("invalid length".into()))?,
+                offset: parts[2]
+                    .parse()
+                    .map_err(|_| AppError::InvalidInput("invalid offset".into()))?,
+                line_bases: parts[3]
+                    .parse()
+                    .map_err(|_| AppError::InvalidInput("invalid line_bases".into()))?,
+                line_width: parts[4]
+                    .parse()
+                    .map_err(|_| AppError::InvalidInput("invalid line_width".into()))?,
                 description,
             };
 
@@ -64,9 +75,10 @@ impl FaidxIndex {
 
     /// Retrieve the full sequence for a given sequence ID as a `FastaRecord`.
     pub fn fetch(&self, id: &str) -> Result<FastaRecord> {
-        let meta = self.records.get(id).ok_or_else(|| {
-            AppError::InvalidInput(format!("record '{}' not found in index", id))
-        })?;
+        let meta = self
+            .records
+            .get(id)
+            .ok_or_else(|| AppError::InvalidInput(format!("record '{}' not found in index", id)))?;
 
         self.read_range(meta, 0, meta.length as usize)
     }
@@ -74,9 +86,10 @@ impl FaidxIndex {
     /// Retrieve a region slice (`start` index with a given `length`) as a `FastaRecord`.
     /// `start` is 0-based. If `start + length` exceeds total sequence length, it gets safely capped.
     pub fn fetch_range(&self, id: &str, start: usize, length: usize) -> Result<FastaRecord> {
-        let meta = self.records.get(id).ok_or_else(|| {
-            AppError::InvalidInput(format!("record '{}' not found in index", id))
-        })?;
+        let meta = self
+            .records
+            .get(id)
+            .ok_or_else(|| AppError::InvalidInput(format!("record '{}' not found in index", id)))?;
 
         if start >= meta.length as usize {
             return Err(AppError::InvalidInput(format!(

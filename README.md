@@ -285,4 +285,4 @@ myrs hic-contact-matrix -i aligned_hic.bam -b 10000 -t 4 -q 30 --max-nm 5 --min-
 This project was developed with the assistance of GenAI tools (Copilot), which helped only with drafting documentation and refactoring (along with cargo fmt). The final content has been reviewed and verified.
 
 ## Contact
-For questions, issues, or feature requests, please open an issue on the [GitHub repository](https://github.com/sivasubramanics/svmarkers/issues).
+For questions, issues, or feature requests, please open an issue on the [GitHub repository](https://github.com/sivasubramanics/myrs/issues).

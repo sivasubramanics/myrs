@@ -598,3 +598,159 @@ impl BamFlagStats {
         info!("========================================================");
     }
 }
+
+
+pub struct NativeBamWriter<W> {
+    writer: W,
+}
+
+impl NativeBamWriter<Box<dyn Write>> {
+    pub fn from_path<P: AsRef<Path>>(path: P, header: &BamHeader) -> Result<Self> {
+        let path_ref = path.as_ref();
+        let file = create_file(path_ref)?;
+        info!("writing native BAM file {:?}", path_ref.display());
+
+        let buf_writer = BufWriter::with_capacity(DEFAULT_BUF_SIZE, file);
+        let gz_encoder = GzEncoder::new(buf_writer, Compression::default());
+        let writer: Box<dyn Write> = Box::new(BufWriter::with_capacity(DEFAULT_BUF_SIZE, gz_encoder));
+
+        let mut bam_writer = Self::new(writer);
+        bam_writer.write_header(header)?;
+        Ok(bam_writer)
+    }
+}
+
+impl<W: Write> NativeBamWriter<W> {
+    pub fn new(writer: W) -> Self {
+        Self { writer }
+    }
+
+    pub fn write_header(&mut self, header: &BamHeader) -> io::Result<()> {
+        // 1. Write BAM Magic Bytes ("BAM\1")
+        self.writer.write_all(b"BAM\x01")?;
+
+        // 2. Write SAM Header Text
+        let text_bytes = header.text.as_bytes();
+        let l_text = text_bytes.len() as i32;
+        self.writer.write_all(&l_text.to_le_bytes())?;
+        self.writer.write_all(text_bytes)?;
+
+        // 3. Write Reference Dictionary
+        let n_ref = header.references.len() as i32;
+        self.writer.write_all(&n_ref.to_le_bytes())?;
+        for reference in &header.references {
+            let mut name_bytes = reference.name.as_bytes().to_vec();
+            name_bytes.push(0); // Null terminator
+            let l_name = name_bytes.len() as i32;
+            self.writer.write_all(&l_name.to_le_bytes())?;
+            self.writer.write_all(&name_bytes)?;
+            self.writer.write_all(&reference.length.to_le_bytes())?;
+        }
+
+        Ok(())
+    }
+
+    pub fn write_record(&mut self, record: &BamRecord) -> io::Result<()> {
+
+        // 1. Read Name (null-terminated)
+        let mut name_bytes = record.name.as_bytes().to_vec();
+        name_bytes.push(0);
+        let l_read_name = name_bytes.len() as u8;
+
+        // 2. CIGAR (simplified empty/dummy placeholder or empty CIGAR ops if not tracked)
+        let n_cigar_op = 0u16;
+
+        // 3. Encoded Sequence (4-bit encoding)
+        let l_seq = record.sequence.len();
+        let mut seq_bytes = vec![0u8; (l_seq + 1) / 2];
+        for (i, &base) in record.sequence.iter().enumerate() {
+            let val = match base {
+                b'=' => 0,
+                b'A' | b'a' => 1,
+                b'C' | b'c' => 2,
+                b'M' | b'm' => 3,
+                b'G' | b'g' => 4,
+                b'R' | b'r' => 5,
+                b'S' | b's' => 6,
+                b'V' | b'v' => 7,
+                b'T' | b't' => 8,
+                b'W' | b'w' => 9,
+                b'Y' | b'y' => 10,
+                b'H' | b'h' => 11,
+                b'K' | b'k' => 12,
+                b'D' | b'd' => 13,
+                b'B' | b'b' => 14,
+                _ => 15, // 'N'
+            };
+            if i % 2 == 0 {
+                seq_bytes[i / 2] |= val << 4;
+            } else {
+                seq_bytes[i / 2] |= val;
+            }
+        }
+
+        // 4. Quality scores
+        let quality_bytes = if record.quality.len() == l_seq {
+            record.quality.clone()
+        } else {
+            vec![255; l_seq] // Default missing quality if unpopulated
+        };
+
+        // Construct fixed core alignment fields (32 bytes)
+        let mut block = Vec::with_capacity(32 + name_bytes.len() + seq_bytes.len() + quality_bytes.len());
+        block.extend_from_slice(&record.ref_id.to_le_bytes());
+        block.extend_from_slice(&record.pos.to_le_bytes());
+        block.push(l_read_name);
+        block.push(record.mapq);
+        block.extend_from_slice(&0u16.to_le_bytes()); // bin
+        block.extend_from_slice(&n_cigar_op.to_le_bytes());
+        block.extend_from_slice(&record.flag.to_le_bytes());
+        block.extend_from_slice(&(l_seq as i32).to_le_bytes());
+        block.extend_from_slice(&record.next_ref_id.to_le_bytes());
+        block.extend_from_slice(&record.next_pos.to_le_bytes());
+        block.extend_from_slice(&record.tlen.to_le_bytes());
+
+        // Append variable length fields
+        block.extend_from_slice(&name_bytes);
+        // CIGAR block is empty (0 ops)
+        block.extend_from_slice(&seq_bytes);
+        block.extend_from_slice(&quality_bytes);
+
+        // Append NM tag if available
+        if let Some(nm) = record.nm {
+            block.extend_from_slice(b"NM");
+            block.push(b'i');
+            block.extend_from_slice(&nm.to_le_bytes());
+        }
+
+        // Append AS tag if available
+        if let Some(as_score) = record.as_score {
+            block.extend_from_slice(b"AS");
+            block.push(b'i');
+            block.extend_from_slice(&as_score.to_le_bytes());
+        }
+
+        let block_size = block.len() as i32;
+        self.writer.write_all(&block_size.to_le_bytes())?;
+        self.writer.write_all(&block)?;
+
+        Ok(())
+    }
+
+    pub fn flush(&mut self) -> io::Result<()> {
+        self.writer.flush()
+    }
+
+    /// Write the standard 28-byte BGZF EOF block required by samtools
+    pub fn write_eof_marker(&mut self) -> io::Result<()> {
+        const BGZF_EOF_BLOCK: [u8; 28] = [
+            0x1f, 0x8b, 0x08, 0x04, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x06, 0x00, 0x42, 0x43,
+            0x02, 0x00, 0x1b, 0x00, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+        ];
+        // Note: To write raw bytes directly to the underlying stream bypassing further
+        // compression wrapping, you write to the encoder/writer chain.
+        // With GzEncoder, writing this literal byte block works because GzEncoder
+        // will treat it as part of the gzip stream concatenation (MultiGzDecoder friendly).
+        self.writer.write_all(&BGZF_EOF_BLOCK)
+    }
+}

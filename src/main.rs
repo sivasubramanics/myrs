@@ -126,6 +126,17 @@ fn run_app() -> Result<(), Box<dyn std::error::Error>> {
             };
             cmd::hicmatrix::run(&args.input, args.binsize, args.threads, filters)?;
         }
+
+        cli::Commands::HicLinks(args) => {
+            let options = cmd::hiclinks::LinkOptions {
+                filtered_bam: args.filtered_bam,
+                rejected_bam: args.rejected_bam,
+                only_primary: args.only_primary,
+                max_nm: args.nm,
+                min_mapq: args.min_mapq,
+            };
+            cmd::hiclinks::run(&args.input, &args.output, args.threads, options)?;
+        }
     }
 
     Ok(())

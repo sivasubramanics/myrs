@@ -9,3 +9,4 @@ pub mod fastats;
 pub mod fqstats;
 pub mod hicmatrix;
 pub mod farename;
+pub mod hiclinks;

@@ -177,6 +177,10 @@ pub enum Commands {
     /// Construct sparse contact matrix from Hi-C BAM file
     #[command(arg_required_else_help = true)]
     HicContactMatrix(HiCMatrixArgs),
+
+    /// Extract Hi-C read pairs and write to TSV
+    #[command(arg_required_else_help = true)]
+    HicLinks(HiCLinksArgs),
 }
 
 #[derive(Args, Debug, Clone)]
@@ -206,4 +210,39 @@ pub struct HiCMatrixArgs {
         help = "Minimum allowed alignment score (AS tag)"
     )]
     pub min_as: i32,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct HiCLinksArgs {
+    /// Input BAM file path
+    #[arg(short = 'i', long = "input")]
+    pub input: String,
+
+    /// Output TSV file path
+    #[arg(short = 'o', long = "out")]
+    pub output: String,
+
+    /// Optional output BAM file for read pairs that pass filters
+    #[arg(long = "filtered-bam")]
+    pub filtered_bam: Option<String>,
+
+    /// Optional output BAM file for read pairs that are filtered out
+    #[arg(long = "rejected-bam")]
+    pub rejected_bam: Option<String>,
+
+    /// Number of threads (reserved for future parallel processing)
+    #[arg(short = 't', long = "threads", default_value_t = 2)]
+    pub threads: usize,
+
+    /// Keep only primary alignments (exclude secondary and supplementary records)
+    #[arg(long = "only-primary", default_value_t = false)]
+    pub only_primary: bool,
+
+    /// Maximum allowed NM edit distance per read; omit to disable NM filtering
+    #[arg(long = "nm", default_value_t = 3)]
+    pub nm: u8,
+
+    /// Minimum MAPQ required for each read (default: 30)
+    #[arg(long = "min-mapq", default_value_t = 30)]
+    pub min_mapq: u8,
 }

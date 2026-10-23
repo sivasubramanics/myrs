@@ -181,6 +181,10 @@ pub enum Commands {
     /// Extract Hi-C read pairs and write to TSV
     #[command(arg_required_else_help = true)]
     HicLinks(HiCLinksArgs),
+
+    /// Calculate physical Hi-C coverage from links TSV file
+    #[command(arg_required_else_help = true)]
+    HicCoverage(HiCCoverageArgs),
 }
 
 #[derive(Args, Debug, Clone)]
@@ -245,4 +249,27 @@ pub struct HiCLinksArgs {
     /// Minimum MAPQ required for each read (default: 30)
     #[arg(long = "min-mapq", default_value_t = 30)]
     pub min_mapq: u8,
+}
+
+#[derive(Args, Debug, Clone)]
+pub struct HiCCoverageArgs {
+    /// Input links TSV file path
+    #[arg(short = 'i', long = "input")]
+    pub input: String,
+
+    /// Bin size (bp)
+    #[arg(short = 'b', long = "binsize")]
+    pub binsize: usize,
+
+    /// Output physical coverage TSV file path
+    #[arg(short = 'o', long = "out")]
+    pub output: String,
+
+    /// Optional output sparse contact matrix TSV file path
+    #[arg(long = "matrix-out")]
+    pub matrix_output: Option<String>,
+
+    /// Number of threads for parallel processing
+    #[arg(short = 't', long = "threads", default_value_t = 2)]
+    pub threads: usize,
 }

@@ -35,7 +35,7 @@ pub fn run(
 
     let file = create_file(output_path)?;
     let mut writer = BufWriter::new(file);
-    writeln!(writer, "read_1_ref\tread_1_pos\tread_1_strand\tread_2_ref\tread_2_pos\tread_2_strand")?;
+    // writeln!(writer, "read_1_ref\tread_1_pos\tread_1_strand\tread_2_ref\tread_2_pos\tread_2_strand")?;
 
     let mut current = BamRecord::default();
     let mut pending: Option<BamRecord> = None;

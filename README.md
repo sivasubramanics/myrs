@@ -281,6 +281,63 @@ myrs hic-contact-matrix -i aligned_hic.bam -b 10000 -t 4 -q 30 --max-nm 5 --min-
 
 ---
 
+
+#### `hic-links`
+
+```bash
+myrs hic-links -i aligned_hic.bam -b 10000 -t 4 -q 30 --max-nm 5
+```
+
+* `-i, --input <INPUT>                Input BAM file path`
+
+
+* `-o, --out <OUTPUT>                 Output TSV file path`
+
+
+* `--filtered-bam <FILTERED_BAM>  Optional output BAM file for read pairs that pass filters`
+
+
+* `--rejected-bam <REJECTED_BAM>  Optional output BAM file for read pairs that are filtered out`
+
+
+* `-t, --threads <THREADS>            Number of threads (reserved for future parallel processing) [default: 2]`
+
+
+* `--only-primary                 Keep only primary alignments (exclude secondary and supplementary records)`
+
+
+* `--nm <NM>                      Maximum allowed NM edit distance per read; omit to disable NM filtering [default: 3]`
+
+
+* `--min-mapq <MIN_MAPQ>          Minimum MAPQ required for each read (default: 30) [default: 30]`
+
+---
+
+#### `hic-coverage`
+
+Calculate physical Hi-C coverage from links TSV file
+```bash
+myrs hic-coverage --i links.tsv -b 10000 -o coverage.tsv --matrix-out contact_matrix.tsv -t 4
+```
+
+* `-i, --input <INPUT>               Input links TSV file path`
+
+
+* `-b, --binsize <BINSIZE>           Bin size (bp)`
+
+
+* `-o, --out <OUTPUT>                Output physical coverage TSV file path`
+
+
+* `--matrix-out <MATRIX_OUTPUT>  Optional output sparse contact matrix TSV file path`
+
+
+* `-t, --threads <THREADS>           Number of threads for parallel processing [default: 2]`
+
+
+```
+---
+
 ## GenAI Involvement
 This project was developed with the assistance of GenAI tools (Copilot), which helped only with drafting documentation and refactoring (along with cargo fmt). The final content has been reviewed and verified.
 

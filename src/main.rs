@@ -137,6 +137,16 @@ fn run_app() -> Result<(), Box<dyn std::error::Error>> {
             };
             cmd::hiclinks::run(&args.input, &args.output, args.threads, options)?;
         }
+
+        cli::Commands::HicCoverage(args) => {
+            cmd::hiccoverage::run(
+                &args.input,
+                &args.output,
+                args.matrix_output.as_deref(),
+                args.binsize,
+                args.threads,
+            )?;
+        }
     }
 
     Ok(())

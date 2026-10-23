@@ -10,3 +10,4 @@ pub mod fqstats;
 pub mod hicmatrix;
 pub mod farename;
 pub mod hiclinks;
+pub mod hiccoverage;

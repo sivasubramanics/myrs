@@ -25,6 +25,7 @@ pub struct BamRecord {
     pub next_ref_id: i32,
     pub next_pos: i32,
     pub tlen: i32,
+    pub cigar: Vec<u8>,
     pub sequence: Vec<u8>,
     pub quality: Vec<u8>,      // Raw Phred scores (0-255)
     pub nm: Option<i32>,       // Edit distance (NM auxiliary tag)
@@ -277,8 +278,17 @@ impl<R: Read> NativeBamReader<R> {
         record.name = String::from_utf8_lossy(name_bytes).into_owned();
         offset += l_read_name;
 
-        // 2. Skip CIGAR (n_cigar_op * 4 bytes)
-        offset += n_cigar_op * 4;
+        // 2. Read and store CIGAR (n_cigar_op * 4 bytes)
+        let cigar_len = n_cigar_op as usize * 4;
+        if offset + cigar_len > block_size {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                "invalid CIGAR length",
+            ));
+        }
+        record.cigar.clear();
+        record.cigar.extend_from_slice(&block[offset..offset + cigar_len]);
+        offset += cigar_len;
 
         // 3. Decode 4-bit compressed nucleotide Sequence
         let seq_bytes_len = (l_seq + 1) / 2;
@@ -611,7 +621,7 @@ impl NativeBamWriter<Box<dyn Write>> {
         info!("writing native BAM file {:?}", path_ref.display());
 
         let buf_writer = BufWriter::with_capacity(DEFAULT_BUF_SIZE, file);
-        let gz_encoder = GzEncoder::new(buf_writer, Compression::default());
+        let gz_encoder = GzEncoder::new(buf_writer, Compression::fast());
         let writer: Box<dyn Write> = Box::new(BufWriter::with_capacity(DEFAULT_BUF_SIZE, gz_encoder));
 
         let mut bam_writer = Self::new(writer);
@@ -657,8 +667,8 @@ impl<W: Write> NativeBamWriter<W> {
         name_bytes.push(0);
         let l_read_name = name_bytes.len() as u8;
 
-        // 2. CIGAR (simplified empty/dummy placeholder or empty CIGAR ops if not tracked)
-        let n_cigar_op = 0u16;
+        // 2. CIGAR operations count (each op is 4 bytes)
+        let n_cigar_op = (record.cigar.len() / 4) as u16;
 
         // 3. Encoded Sequence (4-bit encoding)
         let l_seq = record.sequence.len();
@@ -712,7 +722,7 @@ impl<W: Write> NativeBamWriter<W> {
 
         // Append variable length fields
         block.extend_from_slice(&name_bytes);
-        // CIGAR block is empty (0 ops)
+        block.extend_from_slice(&record.cigar);
         block.extend_from_slice(&seq_bytes);
         block.extend_from_slice(&quality_bytes);
 

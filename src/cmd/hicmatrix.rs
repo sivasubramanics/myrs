@@ -401,7 +401,7 @@ impl<'a> CalculatedMatrixSummary<'a> {
         let file = create_file(&output_path)?;
         let mut writer = BufWriter::new(file);
 
-        writeln!(writer, "chrom1\tbin1\tchrom2\tbin2\tcount")?;
+        // writeln!(writer, "chrom1\tbin1\tchrom2\tbin2\tcount")?;
 
         let mut keys: Vec<&ContactBinKey> = bin_counts.keys().collect();
         keys.sort_by(|a, b| {
